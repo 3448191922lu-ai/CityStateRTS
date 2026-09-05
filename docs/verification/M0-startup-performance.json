@@ -1,0 +1,15 @@
+{
+  "Source": "Profile(20260905_121618).csv",
+  "CapturedFrames": 300,
+  "SkippedWarmupFrames": 60,
+  "SampleFrames": 240,
+  "AverageMs": 9.843347083333333,
+  "P95Ms": 11.2283,
+  "MaxMs": 30.7927,
+  "InitialUnits": 8,
+  "SampleMaxUnits": 8.0,
+  "WindowMode": "Hidden launch, unattended, no player input; not gameplay acceptance",
+  "Resolution": "1280x720",
+  "RHI": "D3D12",
+  "QueriedQualityLevels": "ViewDistance,Shadow,GlobalIllumination,Reflection,PostProcess=3"
+}

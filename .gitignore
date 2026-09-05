@@ -1,0 +1,17 @@
+# Unreal 生成目录
+/Binaries/
+/Intermediate/
+/Saved/
+/DerivedDataCache/
+/Builds/
+/Build/Windows/FileOpenOrder/
+# 本地工具与编辑器状态
+/.vs/
+/.codex/
+/.firecrawl/
+/.superpowers/
+/.worktrees/
+*.sln
+*.slnx
+*.VC.db
+*.VC.opendb

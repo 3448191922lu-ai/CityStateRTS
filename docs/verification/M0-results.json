@@ -1,0 +1,14 @@
+{
+  "Date": "2026-09-05",
+  "EditorBuild": "Succeeded",
+  "AutomationPassed": 18,
+  "AutomationFailed": 0,
+  "AutomationStartupConditionErrors": 13,
+  "PackageExitCode": 0,
+  "Smoke15NoCsvExitCode": 0,
+  "Smoke60CsvExitCode": 777003,
+  "Smoke60CsvRepeatExitCode": 777003,
+  "GameplayAcceptance": "Pending",
+  "SourceAssetChanges": 0,
+  "Smoke60NoCsvExitCode": 0
+}

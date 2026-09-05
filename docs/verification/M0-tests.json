@@ -1,0 +1,299 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "DESKTOP-101AJPT",
+			"instance": "EB87D43D4AAAEDC82C69B39F907A931D",
+			"instanceName": "DESKTOP-101AJPT-40128",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (23H2) [10.0.22631.7376] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+			"cPUModel": "12th Gen Intel(R) Core(TM) i7-12700H",
+			"rAMInGB": 16,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.09.05-04.11.47",
+	"succeeded": 18,
+	"succeededWithWarnings": 0,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 0.29934760928153992,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "PaletteAndSilhouettes",
+			"fullTestPath": "RTS.Strategy.ArtStyle.PaletteAndSilhouettes",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.016442697495222092,
+			"dateTime": "2026.09.05-04.11.46",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "BuildingFootprint",
+			"fullTestPath": "RTS.Strategy.Rules.BuildingFootprint",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.017610702663660049,
+			"dateTime": "2026.09.05-04.11.46",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Capture",
+			"fullTestPath": "RTS.Strategy.Rules.Capture",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.01774279773235321,
+			"dateTime": "2026.09.05-04.11.46",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "CounterDamage",
+			"fullTestPath": "RTS.Strategy.Rules.CounterDamage",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.016677100211381912,
+			"dateTime": "2026.09.05-04.11.46",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "EarlyFactionInitialization",
+			"fullTestPath": "RTS.Strategy.Rules.EarlyFactionInitialization",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.01705310121178627,
+			"dateTime": "2026.09.05-04.11.46",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Economy",
+			"fullTestPath": "RTS.Strategy.Rules.Economy",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.017503000795841217,
+			"dateTime": "2026.09.05-04.11.46",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "PopulationLimit",
+			"fullTestPath": "RTS.Strategy.Rules.PopulationLimit",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.016546901315450668,
+			"dateTime": "2026.09.05-04.11.46",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Victory",
+			"fullTestPath": "RTS.Strategy.Rules.Victory",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.017573900520801544,
+			"dateTime": "2026.09.05-04.11.46",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "AIPriority",
+			"fullTestPath": "RTS.Strategy.Systems.AIPriority",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.016013998538255692,
+			"dateTime": "2026.09.05-04.11.46",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "BlockedGateTarget",
+			"fullTestPath": "RTS.Strategy.Systems.BlockedGateTarget",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.016019202768802643,
+			"dateTime": "2026.09.05-04.11.46",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "CameraMovement",
+			"fullTestPath": "RTS.Strategy.Systems.CameraMovement",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.015906598418951035,
+			"dateTime": "2026.09.05-04.11.46",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "FogGrid",
+			"fullTestPath": "RTS.Strategy.Systems.FogGrid",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.015687700361013412,
+			"dateTime": "2026.09.05-04.11.46",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "GateCollisionRules",
+			"fullTestPath": "RTS.Strategy.Systems.GateCollisionRules",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.01647379994392395,
+			"dateTime": "2026.09.05-04.11.47",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "SquadMarkerRules",
+			"fullTestPath": "RTS.Strategy.Systems.SquadMarkerRules",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.015508498996496201,
+			"dateTime": "2026.09.05-04.11.47",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "TowerTargetRules",
+			"fullTestPath": "RTS.Strategy.Systems.TowerTargetRules",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.017738897353410721,
+			"dateTime": "2026.09.05-04.11.47",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "TrainingQueue",
+			"fullTestPath": "RTS.Strategy.Systems.TrainingQueue",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.015826202929019928,
+			"dateTime": "2026.09.05-04.11.47",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "WallPlacementRules",
+			"fullTestPath": "RTS.Strategy.Systems.WallPlacementRules",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.016256097704172134,
+			"dateTime": "2026.09.05-04.11.47",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "WallPlanner",
+			"fullTestPath": "RTS.Strategy.Systems.WallPlanner",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EB87D43D4AAAEDC82C69B39F907A931D"
+			],
+			"duration": 0.016766399145126343,
+			"dateTime": "2026.09.05-04.11.47",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}
