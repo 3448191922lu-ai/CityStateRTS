@@ -1,0 +1,43 @@
+[2026.09.05-04.46.40:885][840]LogNFORDenoise: NFORDenoise function shutting down
+
+[2026.09.05-04.46.40:886][840]RenderDocPlugin: plugin has been unloaded.
+
+[2026.09.05-04.46.40:889][840]LogPakFile: Destroying PakPlatformFile
+
+[2026.09.05-04.46.47:800][840]LogD3D12RHI: ~FD3D12DynamicRHI
+
+[2026.09.05-04.46.47:861][840]LogExit: Exiting.
+
+(a140.575c): Access violation - code c0000005 (first chance)
+M0_FIRST_ACCESS_VIOLATION
+ExceptionAddress: 00007ff9f7fe403a (ntdll!TpWorkOnBehalfClearTicket+0x000000000000018a)
+   ExceptionCode: c0000005 (Access violation)
+  ExceptionFlags: 00000000
+NumberParameters: 2
+   Parameter[0]: 0000000000000001
+   Parameter[1]: 0000000000000024
+Attempt to write to address 0000000000000024
+Unable to get exception context, HRESULT 0x8000FFFF
+Child-SP          RetAddr               : Args to Child                                                           : Call Site
+00000009`c4aff580 00007ff9`f7fd1d84     : 000001d5`7a270000 00000000`00000000 00000000`00000000 00000000`00000000 : ntdll!TpWorkOnBehalfClearTicket+0x18a
+00000009`c4aff690 00007ff9`f7fd1b72     : 00000000`00000001 00000009`c4aff700 00007feb`616ac400 00007ff6`9ada1e8b : ntdll!RtlEnterCriticalSection+0x254
+*** WARNING: Unable to verify timestamp for RTS.exe
+00000009`c4aff710 00007ff6`9a93a612     : 00000000`00000000 000001d5`79ef0ed0 00000000`00000000 00007ff6`9a9adf8d : ntdll!RtlEnterCriticalSection+0x42
+00000009`c4aff740 00007ff6`9ac640a9     : 00007feb`a169df98 00000000`00001000 00007fe9`616fc4c0 00000000`00000000 : RTS!TMallocBinnedCommon<FMallocBinned3,48,14336>::FPerThreadFreeBlockLists::ClearTLS+0x82
+00000009`c4aff7f0 00007ff6`9ae2fd18     : 00000000`00000000 00000ab0`aaa56eed 00000ab0`efcdca9f 00000ab0`efcdcaa6 : RTS!FCsvProfilerProcessingThread::Run+0x439
+00000009`c4aff900 00007ff6`9ae297ef     : 00000000`00000000 00007fe9`616fc4c0 00000000`00000000 00000000`00000000 : RTS!FRunnableThreadWin::Run+0x68
+00000009`c4aff930 00007ff9`f6e1259d     : 00007fe9`616fc4c0 00000ab0`aa9a694a 00000000`00000000 00000000`00000000 : RTS!FRunnableThreadWin::GuardedRun+0x16f
+00000009`c4aff970 00007ff9`f800afb8     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : KERNEL32!BaseThreadInitThunk+0x1d
+00000009`c4aff9a0 00000000`00000000     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000000 : ntdll!RtlUserThreadStart+0x28
+quit:
+NatVis script unloaded from 'D:\ue project\RTS\Saved\Verification\M0-Current\Tools\windbg\amd64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'D:\ue project\RTS\Saved\Verification\M0-Current\Tools\windbg\amd64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'D:\ue project\RTS\Saved\Verification\M0-Current\Tools\windbg\amd64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'D:\ue project\RTS\Saved\Verification\M0-Current\Tools\windbg\amd64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'D:\ue project\RTS\Saved\Verification\M0-Current\Tools\windbg\amd64\Visualizers\stl.natvis'
+NatVis script unloaded from 'D:\ue project\RTS\Saved\Verification\M0-Current\Tools\windbg\amd64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'D:\ue project\RTS\Saved\Verification\M0-Current\Tools\windbg\amd64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'D:\ue project\RTS\Saved\Verification\M0-Current\Tools\windbg\amd64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'D:\ue project\RTS\Saved\Verification\M0-Current\Tools\windbg\amd64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'D:\ue project\RTS\Saved\Verification\M0-Current\Tools\windbg\amd64\Visualizers\windows.natvis'
+NatVis script unloaded from 'D:\ue project\RTS\Saved\Verification\M0-Current\Tools\windbg\amd64\Visualizers\winrt.natvis'

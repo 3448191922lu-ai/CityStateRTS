@@ -1,0 +1,57 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "DESKTOP-101AJPT",
+			"instance": "B803F4144C08F1457FB3A5ACF8DCBA10",
+			"instanceName": "DESKTOP-101AJPT-33000",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (23H2) [10.0.22631.7376] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+			"cPUModel": "12th Gen Intel(R) Core(TM) i7-12700H",
+			"rAMInGB": 16,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.09.05-04.46.40",
+	"succeeded": 0,
+	"succeededWithWarnings": 0,
+	"failed": 1,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 0.10516689717769623,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "SquadMarkerClickSequence",
+			"fullTestPath": "RTS.Strategy.Systems.SquadMarkerClickSequence",
+			"tags": [],
+			"state": "Fail",
+			"deviceInstance": [
+				"B803F4144C08F1457FB3A5ACF8DCBA10"
+			],
+			"duration": 0.10516689717769623,
+			"dateTime": "2026.09.05-04.46.40",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Error",
+						"message": "Expected '拖拽后的下一次按下应恢复普通点击' to be false.",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "D:\\ue project\\RTS\\Source\\RTS\\Variant_Strategy\\Tests\\StrategySystemsTests.cpp",
+					"lineNumber": 249,
+					"timestamp": "2026.09.05-04.46.40"
+				}
+			],
+			"warnings": 0,
+			"errors": 1,
+			"artifacts": []
+		}
+	]
+}

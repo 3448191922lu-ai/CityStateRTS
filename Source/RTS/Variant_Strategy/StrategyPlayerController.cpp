@@ -292,6 +292,8 @@ void AStrategyPlayerController::ResetCamera(const FInputActionValue& Value)
 
 void AStrategyPlayerController::SelectHoldStarted(const FInputActionValue& Value)
 {
+	// 点击屏蔽只属于上一次按下，长拖拽可能没有对应的 Tap 回调。
+	bConsumeNextSelectClick = false;
 	if (bWallPlacementActive)
 	{
 		FVector CursorLocation;
@@ -302,9 +304,23 @@ void AStrategyPlayerController::SelectHoldStarted(const FInputActionValue& Value
 		}
 		return;
 	}
+	if (!FStrategySquadMarkerRules::CanInteract(bBuildingPlacementActive, bWallPlacementActive))
+	{
+		return;
+	}
+
+	const FVector2D Cursor = GetMouseLocationForPlayer();
+	SquadMarkerSource = FindSquadMarkerAtScreenPosition(Cursor);
+	if (SquadMarkerSource)
+	{
+		SquadMarkerPressScreen = Cursor;
+		bSquadMarkerInputActive = true;
+		bConsumeNextSelectClick = true;
+		return;
+	}
 
 	// save the box selection start position
-	StartingBoxSelectionPosition = GetMouseLocationForPlayer();
+	StartingBoxSelectionPosition = Cursor;
 
 }
 
@@ -316,6 +332,20 @@ void AStrategyPlayerController::SelectHoldTriggered(const FInputActionValue& Val
 		if (GetLocationUnderCursor(CursorLocation))
 		{
 			UpdateWallPreview(CursorLocation);
+		}
+		return;
+	}
+	if (bWallPlacementActive || bBuildingPlacementActive)
+	{
+		return;
+	}
+	if (bSquadMarkerInputActive)
+	{
+		const FVector2D Cursor = GetMouseLocationForPlayer();
+		bSquadMarkerDragging |= FVector2D::Distance(Cursor, SquadMarkerPressScreen) >= 6.0f;
+		if (bSquadMarkerDragging)
+		{
+			UpdateSquadMarkerDragTarget();
 		}
 		return;
 	}
@@ -349,6 +379,37 @@ void AStrategyPlayerController::SelectHoldCompleted(const FInputActionValue& Val
 		ClearWallPreview();
 		return;
 	}
+	if (bWallPlacementActive || bBuildingPlacementActive)
+	{
+		return;
+	}
+	if (bSquadMarkerInputActive)
+	{
+		if (!bSquadMarkerDragging)
+		{
+			const bool bAdditive = IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift);
+			if (!bAdditive)
+			{
+				DoDeselectAllUnitsCommand();
+			}
+			SelectSquad(SquadMarkerSource, bAdditive);
+		}
+		else
+		{
+			if (!FStrategySquadMarkerRules::ShouldCommandSelectedSquads(ControlledSquads.Contains(SquadMarkerSource)))
+			{
+				DoDeselectAllUnitsCommand();
+				SelectSquad(SquadMarkerSource, false);
+			}
+			FStrategyOrder Order;
+			Order.Type = FStrategySquadMarkerRules::ResolveOrderType(SquadDragTarget != nullptr);
+			Order.TargetActor = SquadDragTarget;
+			Order.Destination = SquadDragTarget ? SquadDragTarget->GetActorLocation() : SquadDragDestination;
+			DoIssueOrder(Order);
+		}
+		ClearSquadMarkerInput();
+		return;
+	}
 
 	// reset the drag box on the HUD
 	if (StrategyHUD)
@@ -359,6 +420,11 @@ void AStrategyPlayerController::SelectHoldCompleted(const FInputActionValue& Val
 
 void AStrategyPlayerController::SelectClick(const FInputActionValue& Value)
 {
+	if (bConsumeNextSelectClick)
+	{
+		bConsumeNextSelectClick = false;
+		return;
+	}
 	FHitResult Hit;
 	if (!GetHitUnderCursor(Hit))
 	{
@@ -396,6 +462,11 @@ void AStrategyPlayerController::SelectClick(const FInputActionValue& Value)
 
 void AStrategyPlayerController::SelectClickAdditive(const FInputActionValue& Value)
 {
+	if (bConsumeNextSelectClick)
+	{
+		bConsumeNextSelectClick = false;
+		return;
+	}
 	// get the cursor location
 	FVector CursorLocation;
 
@@ -814,6 +885,57 @@ bool AStrategyPlayerController::GetHitUnderCursor(FHitResult& Hit)
 	return Hit.bBlockingHit;
 }
 
+AStrategySquad* AStrategyPlayerController::FindSquadMarkerAtScreenPosition(const FVector2D& ScreenPosition) const
+{
+	const AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	int32 ViewportWidth;
+	int32 ViewportHeight;
+	GetViewportSize(ViewportWidth, ViewportHeight);
+	TArray<AStrategySquad*> Squads;
+	TArray<FVector2D> MarkerPositions;
+	for (AStrategySquad* Squad : State->GetSquads())
+	{
+		FVector2D MarkerPosition;
+		if (IsValid(Squad) && Squad->GetFaction() == EStrategyFaction::Player && Squad->IsAlive()
+			&& ProjectWorldLocationToScreen(Squad->GetMarkerWorldLocation(), MarkerPosition)
+			&& MarkerPosition.X >= 0.0f && MarkerPosition.X <= ViewportWidth
+			&& MarkerPosition.Y >= 0.0f && MarkerPosition.Y <= ViewportHeight)
+		{
+			Squads.Add(Squad);
+			MarkerPositions.Add(MarkerPosition);
+		}
+	}
+	const int32 HoveredIndex = FStrategySquadMarkerRules::FindHoveredMarker(MarkerPositions, ScreenPosition, 17.0f);
+	return Squads.IsValidIndex(HoveredIndex) ? Squads[HoveredIndex] : nullptr;
+}
+
+void AStrategyPlayerController::UpdateSquadMarkerDragTarget()
+{
+	FHitResult Hit;
+	GetHitUnderCursor(Hit);
+	AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	IStrategyDamageable* Target = Cast<IStrategyDamageable>(Hit.GetActor());
+	if (Target && Target->IsStrategyAlive() && Target->GetStrategyFaction() != EStrategyFaction::Player
+		&& State->IsVisibleToFaction(EStrategyFaction::Player, Hit.GetActor()->GetActorLocation()))
+	{
+		SquadDragTarget = Hit.GetActor();
+	}
+	else
+	{
+		SquadDragTarget = nullptr;
+		SquadDragDestination = Hit.Location;
+	}
+}
+
+void AStrategyPlayerController::ClearSquadMarkerInput()
+{
+	SquadMarkerSource = nullptr;
+	SquadDragTarget = nullptr;
+	SquadDragDestination = FVector::ZeroVector;
+	bSquadMarkerInputActive = false;
+	bSquadMarkerDragging = false;
+}
+
 void AStrategyPlayerController::SelectSquad(AStrategySquad* Squad, bool bToggle)
 {
 	if (!IsValid(Squad))
@@ -878,6 +1000,7 @@ void AStrategyPlayerController::HandleStopKey()
 
 void AStrategyPlayerController::HandleBuildMenuKey()
 {
+	ClearSquadMarkerInput();
 	bBuildMenuOpen = !bBuildMenuOpen;
 	bBuildingPlacementActive = false;
 	bWallPlacementActive = false;
@@ -889,6 +1012,7 @@ void AStrategyPlayerController::HandleNumberKey(int32 Index)
 {
 	if (bBuildMenuOpen && Index >= 1 && Index <= 5)
 	{
+		ClearSquadMarkerInput();
 		PendingBuildingIndex = static_cast<uint8>(Index - 1);
 		bBuildingPlacementActive = true;
 		bWallPlacementActive = false;
@@ -896,6 +1020,7 @@ void AStrategyPlayerController::HandleNumberKey(int32 Index)
 	}
 	if (bBuildMenuOpen && Index == 6)
 	{
+		ClearSquadMarkerInput();
 		bBuildingPlacementActive = false;
 		bWallPlacementActive = true;
 		return;

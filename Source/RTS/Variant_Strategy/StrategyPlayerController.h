@@ -29,6 +29,7 @@ UCLASS()
 class AStrategyPlayerController : public APlayerController
 {
 	GENERATED_BODY()
+	friend class FStrategySquadMarkerClickSequenceTest;
 
 protected:
 
@@ -166,6 +167,18 @@ protected:
 	UPROPERTY()
 	TObjectPtr<AStrategyBuilding> SelectedBuilding;
 
+	UPROPERTY()
+	TObjectPtr<AStrategySquad> SquadMarkerSource;
+
+	UPROPERTY()
+	TObjectPtr<AActor> SquadDragTarget;
+
+	FVector2D SquadMarkerPressScreen = FVector2D::ZeroVector;
+	FVector SquadDragDestination = FVector::ZeroVector;
+	bool bSquadMarkerInputActive = false;
+	bool bSquadMarkerDragging = false;
+	bool bConsumeNextSelectClick = false;
+
 	bool bBuildMenuOpen = false;
 	bool bBuildingPlacementActive = false;
 	bool bWallPlacementActive = false;
@@ -204,6 +217,12 @@ public:
 	bool IsBuildMenuOpen() const { return bBuildMenuOpen; }
 	bool IsBuildingPlacementActive() const { return bBuildingPlacementActive; }
 	bool IsWallPlacementActive() const { return bWallPlacementActive; }
+	bool IsSquadMarkerDragging() const { return bSquadMarkerDragging; }
+	AStrategySquad* GetSquadDragSource() const { return SquadMarkerSource; }
+	const FVector& GetSquadDragDestination() const { return SquadDragDestination; }
+	AActor* GetSquadDragTarget() const { return SquadDragTarget; }
+	bool IsSquadSelected(AStrategySquad* Squad) const { return ControlledSquads.Contains(Squad); }
+	AStrategySquad* FindSquadMarkerAtScreenPosition(const FVector2D& ScreenPosition) const;
 
 	/** Returns the default camera zoom percentage value */
 	float GetDefaultZoomPercentage() const;
@@ -335,6 +354,8 @@ protected:
 	void HandlePauseKey();
 	void HandleRestartKey();
 	void HandleQuitKey();
+	void UpdateSquadMarkerDragTarget();
+	void ClearSquadMarkerInput();
 	void UpdateWallPreview(const FVector& End);
 	void ClearWallPreview();
 

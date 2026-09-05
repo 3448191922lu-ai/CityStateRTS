@@ -3,6 +3,9 @@
 #include "Misc/AutomationTest.h"
 #include "StrategySystems.h"
 #include "StrategyArtStyle.h"
+#include "StrategyPlayerController.h"
+#include "Engine/World.h"
+#include "InputActionValue.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FStrategyTrainingQueueTest,
 	"RTS.Strategy.Systems.TrainingQueue",
@@ -226,6 +229,24 @@ bool FStrategySquadMarkerRulesTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("普通建筑放置时禁用徽记输入"), FStrategySquadMarkerRules::CanInteract(true, false));
 	TestFalse(TEXT("城墙拖拽时禁用徽记输入"), FStrategySquadMarkerRules::CanInteract(false, true));
 	TestTrue(TEXT("普通状态允许徽记输入"), FStrategySquadMarkerRules::CanInteract(false, false));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FStrategySquadMarkerClickSequenceTest,
+	"RTS.Strategy.Systems.SquadMarkerClickSequence",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategySquadMarkerClickSequenceTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false);
+	AStrategyPlayerController* Controller = World->SpawnActor<AStrategyPlayerController>();
+	// 长拖拽不会触发 Tap，完成拖拽后遗留的标记不能吞掉下一次建造点击。
+	Controller->bConsumeNextSelectClick = true;
+	Controller->ClearSquadMarkerInput();
+	Controller->bBuildingPlacementActive = true;
+	Controller->SelectHoldStarted(FInputActionValue(true));
+	TestFalse(TEXT("拖拽后的下一次按下应恢复普通点击"), Controller->bConsumeNextSelectClick);
+	World->DestroyWorld(false);
 	return true;
 }
 

@@ -7,6 +7,7 @@
 #include "StrategyHUD.generated.h"
 
 class UStrategyUI;
+enum class EStrategyUnitType : uint8;
 
 /**
  *  Simple strategy game HUD
@@ -55,4 +56,9 @@ protected:
 
 	/** Draws the HUD */
 	virtual void DrawHUD() override;
+
+	void DrawSquadMarker(const FVector2D& Center, float Diameter, EStrategyUnitType UnitType,
+		float HealthPercent, bool bHighlighted);
+	void DrawDragArrow(const FVector2D& Start, const FVector2D& End, const FLinearColor& Color);
+	void DrawCircle(const FVector2D& Center, float Radius, const FLinearColor& Color, float Thickness);
 };

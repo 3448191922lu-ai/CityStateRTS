@@ -1,0 +1,11 @@
+{
+  "Package": "D:\\ue project\\RTS\\Builds\\Windows_M0_Current",
+  "ExitCode": 0,
+  "RequestedSeconds": 60,
+  "RequestedFrames": 300,
+  "CsvCompleted": true,
+  "RuntimeErrors": 0,
+  "CaptureMode": "csvNoProcessingThread; hidden window; no player input",
+  "Resolution": "1280x720",
+  "FullMatchAccepted": false
+}
