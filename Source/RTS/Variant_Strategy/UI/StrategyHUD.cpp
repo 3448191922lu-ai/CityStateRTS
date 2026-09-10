@@ -7,6 +7,8 @@
 #include "StrategyUI.h"
 #include "Engine/Canvas.h"
 #include "StrategyGameState.h"
+#include "StrategyArtStyle.h"
+#include "StrategySystems.h"
 #include "StrategyWorldActors.h"
 
 void AStrategyHUD::BeginPlay()
@@ -100,7 +102,9 @@ void AStrategyHUD::DrawSquadMarker(const FVector2D& Center, float Diameter, EStr
 
 	const float HealthBarY = Center.Y + Radius + 4.0f;
 	DrawRect(FLinearColor(0.03f, 0.03f, 0.04f, 0.95f), Center.X - 15.0f, HealthBarY, 30.0f, 4.0f);
-	DrawRect(FLinearColor(0.12f, 0.90f, 0.28f, 1.0f), Center.X - 15.0f, HealthBarY, 30.0f * HealthPercent, 4.0f);
+	const FLinearColor HealthColor = HealthPercent > 0.5f ? FLinearColor(0.18f, 0.72f, 0.35f, 1.0f)
+		: HealthPercent > 0.25f ? FLinearColor(0.95f, 0.72f, 0.18f, 1.0f) : FLinearColor(0.88f, 0.18f, 0.16f, 1.0f);
+	DrawRect(HealthColor, Center.X - 15.0f, HealthBarY, 30.0f * HealthPercent, 4.0f);
 }
 
 void AStrategyHUD::DrawDragArrow(const FVector2D& Start, const FVector2D& End, const FLinearColor& Color)
@@ -114,6 +118,34 @@ void AStrategyHUD::DrawDragArrow(const FVector2D& Start, const FVector2D& End, c
 	DrawLine(End.X, End.Y, WingB.X, WingB.Y, Color, 3.0f);
 }
 
+void AStrategyHUD::DrawTownSymbol(const FVector2D& Center, EStrategyTownSpecialization Specialization,
+	const FLinearColor& Color)
+{
+	DrawCircle(Center, 13.0f, Color, 2.5f);
+	switch (Specialization)
+	{
+	case EStrategyTownSpecialization::Trade:
+		DrawCircle(Center, 7.0f, Color, 2.0f);
+		DrawLine(Center.X, Center.Y - 5.0f, Center.X, Center.Y + 5.0f, Color, 2.0f);
+		break;
+	case EStrategyTownSpecialization::Recruitment:
+		DrawLine(Center.X - 8.0f, Center.Y + 5.0f, Center.X, Center.Y - 3.0f, Color, 2.0f);
+		DrawLine(Center.X, Center.Y - 3.0f, Center.X + 8.0f, Center.Y + 5.0f, Color, 2.0f);
+		DrawLine(Center.X - 8.0f, Center.Y - 2.0f, Center.X, Center.Y - 10.0f, Color, 2.0f);
+		DrawLine(Center.X, Center.Y - 10.0f, Center.X + 8.0f, Center.Y - 2.0f, Color, 2.0f);
+		break;
+	case EStrategyTownSpecialization::Fortress:
+		DrawLine(Center.X - 8.0f, Center.Y - 7.0f, Center.X + 8.0f, Center.Y - 7.0f, Color, 2.0f);
+		DrawLine(Center.X - 8.0f, Center.Y - 7.0f, Center.X - 6.0f, Center.Y + 5.0f, Color, 2.0f);
+		DrawLine(Center.X + 8.0f, Center.Y - 7.0f, Center.X + 6.0f, Center.Y + 5.0f, Color, 2.0f);
+		DrawLine(Center.X - 6.0f, Center.Y + 5.0f, Center.X, Center.Y + 10.0f, Color, 2.0f);
+		DrawLine(Center.X, Center.Y + 10.0f, Center.X + 6.0f, Center.Y + 5.0f, Color, 2.0f);
+		break;
+	default:
+		break;
+	}
+}
+
 void AStrategyHUD::DrawHUD()
 {
 	// draw all debug information, etc.
@@ -124,6 +156,94 @@ void AStrategyHUD::DrawHUD()
 	{
 		if (const AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>())
 		{
+			const FLinearColor PlayerColor = StrategyArtStyle::GetFactionColor(EStrategyFaction::Player);
+			const FLinearColor EnemyColor = StrategyArtStyle::GetFactionColor(EStrategyFaction::Enemy);
+			const float IntroOpacity = FStrategyIntroPromptRules::GetOpacity(GetWorld()->GetTimeSeconds());
+			if (State->IsMatchRunning() && IntroOpacity > 0.0f)
+			{
+				const float IntroWidth = 620.0f;
+				const float IntroX = Canvas->SizeX * 0.5f - IntroWidth * 0.5f;
+				DrawRect(FLinearColor(0.015f, 0.02f, 0.04f, 0.82f * IntroOpacity), IntroX, 92.0f, IntroWidth, 82.0f);
+				DrawText(TEXT("占领城镇  发展军队  摧毁敌方主城"), FLinearColor(1.0f, 0.88f, 0.34f, IntroOpacity),
+					IntroX + 74.0f, 120.0f, nullptr, 1.35f);
+			}
+
+			// 补给线只绘制玩家自己的据点网络，不推断敌方迷雾状态。
+			const TArray<TObjectPtr<AStrategyControlPoint>>& Points = State->GetControlPoints();
+			for (int32 LeftIndex = 0; LeftIndex < Points.Num(); ++LeftIndex)
+			{
+				const AStrategyControlPoint* Left = Points[LeftIndex];
+				if (!IsValid(Left) || Left->GetStrategyFaction() != EStrategyFaction::Player)
+				{
+					continue;
+				}
+				for (int32 RightIndex = LeftIndex + 1; RightIndex < Points.Num(); ++RightIndex)
+				{
+					const AStrategyControlPoint* Right = Points[RightIndex];
+					if (!IsValid(Right) || Right->GetStrategyFaction() != EStrategyFaction::Player
+						|| FVector::DistSquared2D(Left->GetActorLocation(), Right->GetActorLocation()) > FMath::Square(FStrategySupplyRules::LinkDistance))
+					{
+						continue;
+					}
+					FVector2D LeftScreen;
+					FVector2D RightScreen;
+					if (PC->ProjectWorldLocationToScreen(Left->GetActorLocation() + FVector(0.0f, 0.0f, 80.0f), LeftScreen)
+						&& PC->ProjectWorldLocationToScreen(Right->GetActorLocation() + FVector(0.0f, 0.0f, 80.0f), RightScreen))
+					{
+						const bool bLeftConnected = Left->IsCapital() || State->IsTownSupplyConnected(Left);
+						const bool bRightConnected = Right->IsCapital() || State->IsTownSupplyConnected(Right);
+						const FLinearColor LinkColor = bLeftConnected && bRightConnected
+							? FLinearColor(PlayerColor.R, PlayerColor.G, PlayerColor.B, 0.45f)
+							: FLinearColor(0.34f, 0.36f, 0.40f, 0.55f);
+						DrawLine(LeftScreen.X, LeftScreen.Y, RightScreen.X, RightScreen.Y, LinkColor, 2.0f);
+					}
+				}
+			}
+
+			for (const AStrategyControlPoint* Point : Points)
+			{
+				if (!IsValid(Point) || Point->IsCapital())
+				{
+					continue;
+				}
+				const bool bVisible = State->IsVisibleToFaction(EStrategyFaction::Player, Point->GetActorLocation());
+				if (!FStrategyTownVisibilityRules::CanShowPublicDetails(
+					EStrategyFaction::Player, Point->GetStrategyFaction(), bVisible))
+				{
+					continue;
+				}
+				FVector2D IconPosition;
+				if (!PC->ProjectWorldLocationToScreen(Point->GetActorLocation() + FVector(0.0f, 0.0f, 470.0f), IconPosition))
+				{
+					continue;
+				}
+				const FStrategyTownDevelopment& Development = Point->GetTownDevelopment();
+				const FLinearColor PointColor = StrategyArtStyle::GetFactionColor(Point->GetStrategyFaction());
+				DrawTownSymbol(IconPosition, FStrategyTownVisibilityRules::GetPublicSpecialization(
+					EStrategyFaction::Player, Point->GetStrategyFaction(), bVisible,
+					Development.Specialization, Development.State), PointColor);
+				if (FStrategyTownVisibilityRules::CanShowLiveDetails(
+					EStrategyFaction::Player, Point->GetStrategyFaction(), bVisible)
+					&& (Development.State == EStrategyTownDevelopmentState::Building
+						|| Development.State == EStrategyTownDevelopmentState::Downgrading
+						|| Development.State == EStrategyTownDevelopmentState::DisabledAfterCapture))
+				{
+					DrawRect(FLinearColor(0.02f, 0.02f, 0.03f, 0.92f), IconPosition.X - 23.0f, IconPosition.Y + 17.0f, 46.0f, 6.0f);
+					const FLinearColor DevelopmentColor = Development.State == EStrategyTownDevelopmentState::Downgrading
+						? FLinearColor(0.92f, 0.42f, 0.16f, 1.0f) : FLinearColor(0.84f, 0.65f, 0.26f, 1.0f);
+					DrawRect(DevelopmentColor, IconPosition.X - 21.0f, IconPosition.Y + 19.0f,
+						42.0f * Point->GetDevelopmentProgress(), 2.0f);
+				}
+				if (Point->GetStrategyFaction() == EStrategyFaction::Player
+					&& Development.Specialization != EStrategyTownSpecialization::None
+					&& !State->IsTownSupplyConnected(Point))
+				{
+					const FLinearColor Broken(0.55f, 0.57f, 0.62f, 1.0f);
+					DrawLine(IconPosition.X - 20.0f, IconPosition.Y - 5.0f, IconPosition.X - 12.0f, IconPosition.Y + 3.0f, Broken, 3.0f);
+					DrawLine(IconPosition.X - 12.0f, IconPosition.Y - 5.0f, IconPosition.X - 20.0f, IconPosition.Y + 3.0f, Broken, 3.0f);
+				}
+			}
+
 			FVector2D MousePosition;
 			PC->GetMousePosition(MousePosition.X, MousePosition.Y);
 			AStrategySquad* HoveredSquad = PC->FindSquadMarkerAtScreenPosition(MousePosition);
@@ -153,52 +273,39 @@ void AStrategyHUD::DrawHUD()
 					DrawDragArrow(SourcePosition, MousePosition, DragColor);
 				}
 
-				const FVector DropWorldLocation = PC->GetSquadDragTarget()
+				const FVector DropWorldLocation = PC->GetSquadDragGarrisonPoint()
+					? PC->GetSquadDragGarrisonPoint()->GetActorLocation()
+					: PC->GetSquadDragTarget()
 					? PC->GetSquadDragTarget()->GetActorLocation()
 					: PC->GetSquadDragDestination();
 				FVector2D DropPosition;
 				if (PC->ProjectWorldLocationToScreen(DropWorldLocation, DropPosition))
 				{
 					DrawCircle(DropPosition, 18.0f, DragColor, 3.0f);
+					if (PC->GetSquadDragTarget())
+					{
+						DrawLine(DropPosition.X - 8.0f, DropPosition.Y - 8.0f, DropPosition.X + 8.0f, DropPosition.Y + 8.0f, DragColor, 3.0f);
+						DrawLine(DropPosition.X + 8.0f, DropPosition.Y - 8.0f, DropPosition.X - 8.0f, DropPosition.Y + 8.0f, DragColor, 3.0f);
+					}
 				}
 			}
 
-			const FStrategyFactionState& Faction = State->GetFactionState(EStrategyFaction::Player);
-			DrawRect(FLinearColor(0.015f, 0.02f, 0.04f, 0.88f), 20.0f, 20.0f, 520.0f, 54.0f);
-			DrawText(FString::Printf(TEXT("GOLD  %.0f     POP  %d+%d/%d     POINTS  %d"), Faction.Gold, Faction.UsedPopulation, Faction.ReservedPopulation, Faction.PopulationCap, Faction.OwnedPoints), FColor::White, 38.0f, 36.0f, nullptr, 1.15f);
+			// 建造进度只作屏幕投影显示，不参与任何鼠标命中。
+			for (AStrategyBuilding* Building : State->GetBuildings())
+			{
+				FVector2D BarPosition;
+				if (IsValid(Building) && !Building->IsConstructionComplete()
+					&& State->IsVisibleToFaction(EStrategyFaction::Player, Building->GetActorLocation())
+					&& PC->ProjectWorldLocationToScreen(Building->GetActorLocation() + FVector(0.0f, 0.0f, 360.0f), BarPosition))
+				{
+					const FLinearColor ProgressColor = Building->GetStrategyFaction() == EStrategyFaction::Player
+						? FLinearColor(0.84f, 0.65f, 0.26f, 1.0f) : EnemyColor;
+					DrawRect(FLinearColor(0.015f, 0.02f, 0.04f, 0.92f), BarPosition.X - 27.0f, BarPosition.Y, 54.0f, 7.0f);
+					DrawRect(ProgressColor, BarPosition.X - 25.0f, BarPosition.Y + 2.0f,
+						50.0f * Building->GetConstructionProgress(), 3.0f);
+				}
+			}
 
-			const float BottomY = Canvas ? Canvas->SizeY - 112.0f : 600.0f;
-			DrawRect(FLinearColor(0.015f, 0.02f, 0.04f, 0.88f), 20.0f, BottomY, Canvas ? Canvas->SizeX - 40.0f : 1200.0f, 92.0f);
-			FString Context = TEXT("WASD Camera   LMB Select/Box   RMB Move/Attack   F Attack-Move   X Stop   B Build   Wheel Zoom   Esc Pause");
-			if (PC->IsBuildMenuOpen())
-			{
-				Context = PC->IsWallPlacementActive()
-					? TEXT("PLACE WALL: Hold LMB and drag   Green valid / Red invalid   B Cancel")
-					: PC->IsBuildingPlacementActive()
-						? TEXT("PLACE BUILDING: Left click valid territory   B Cancel")
-						: TEXT("BUILD: [1] Barracks [2] Archery [3] Stable [4] House [5] Tower [6] Wall [7] Upgrade selected wall to Gate");
-			}
-			else if (AStrategyBuilding* Building = PC->GetSelectedBuilding())
-			{
-				Context = FString::Printf(TEXT("BUILDING  HP %.0f%%  QUEUE %d/5   TRAIN: [1] Infantry [2] Archer [3] Cavalry"), Building->GetHealthPercent() * 100.0f, Building->GetQueueLength());
-			}
-			else if (!PC->GetSelectedSquads().IsEmpty())
-			{
-				Context = FString::Printf(TEXT("%d SQUAD(S) SELECTED   RMB Move/Target   F then RMB Attack-Move   X Stop"), PC->GetSelectedSquads().Num());
-			}
-			if (!PC->IsBuildMenuOpen())
-			{
-				Context += TEXT("   Drag squad badge to move/attack");
-			}
-			DrawText(Context, FColor::White, 38.0f, BottomY + 30.0f, nullptr, 1.0f);
-
-			if (!State->IsMatchRunning())
-			{
-				const FString Result = State->GetWinner() == EStrategyFaction::Player ? TEXT("VICTORY") : TEXT("DEFEAT");
-				DrawRect(FLinearColor(0.0f, 0.0f, 0.0f, 0.82f), Canvas->SizeX * 0.5f - 240.0f, Canvas->SizeY * 0.5f - 80.0f, 480.0f, 160.0f);
-				DrawText(Result, State->GetWinner() == EStrategyFaction::Player ? FColor::Green : FColor::Red, Canvas->SizeX * 0.5f - 80.0f, Canvas->SizeY * 0.5f - 45.0f, nullptr, 2.0f);
-				DrawText(TEXT("R Restart     Q Quit"), FColor::White, Canvas->SizeX * 0.5f - 105.0f, Canvas->SizeY * 0.5f + 22.0f, nullptr, 1.1f);
-			}
 		}
 
 		// draw the selection box
@@ -214,31 +321,12 @@ void AStrategyHUD::DrawHUD()
 			PC->DragSelectUnits(BoxedUnits);
 		}
 
-		// get the currently selected units
-		TArray<AStrategyUnit*> SelectedUnits = PC->GetSelectedUnits();
-
 		// update the selection count on the UI widget
 		if (UIWidget)
 		{
 			UIWidget->SetSelectedUnitsCount(PC->GetSelectedSquads().Num());
 		}
 
-		// process each selected unit
-		for (AStrategyUnit* CurrentUnit : SelectedUnits)
-		{
-			if (IsValid(CurrentUnit))
-			{
-				// project the unit's location to screen coordinates
-				FVector2D ScreenCoords;
-
-				if (PC->ProjectWorldLocationToScreen(CurrentUnit->GetActorLocation(), ScreenCoords, true))
-				{
-					// draw a selection string near the unit
-					DrawText(TEXT("Selected"), FColor::White, ScreenCoords.X - 25.0f, ScreenCoords.Y + 25.0f, nullptr, 1.0f);
-				}
-			}
-			
-		}
 	}
 
 }

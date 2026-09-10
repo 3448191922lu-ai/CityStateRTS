@@ -1,0 +1,20 @@
+{
+  "stage": "M6-01",
+  "date": "2026-09-09",
+  "executable": "D:/ue project/RTS/Builds/Windows_M6_Final/RTS/Binaries/Win64/RTS.exe",
+  "durationSeconds": 20,
+  "aliveBeforeStop": true,
+  "logExists": true,
+  "fatalOrLoadOrNetworkMatches": 0,
+  "launcherExists": true,
+  "internalExecutableExists": true,
+  "packageFiles": 49,
+  "hashMismatches": 0,
+  "cameraPitchDegrees": -53,
+  "cameraBounds": "dynamic ground-view clamp matching UE MaintainYFOV orthographic projection with 200 cm padding",
+  "visualGroundSizeCentimeters": "32000x28000 on both maps",
+  "fogBoundsCentimeters": "32000x28000 on both maps",
+  "fogGridSize": "192x160",
+  "smokeLog": "Saved/Verification/M6/FogBoundsSmoke.log",
+  "packageManifest": "docs/verification/M6-package.csv"
+}

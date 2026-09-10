@@ -1,0 +1,17 @@
+{
+  "stage": "M5-05",
+  "editorBuild": "Succeeded",
+  "automationGroup": "RTS.Strategy",
+  "report": "Saved/Verification/M5/GarrisonFinal/index.json",
+  "succeeded": 46,
+  "succeededWithWarnings": 0,
+  "failed": 0,
+  "notRun": 0,
+  "targetedReports": [
+    "Saved/Verification/M5/GarrisonControlPoint/index.json",
+    "Saved/Verification/M5/GarrisonUI/index.json",
+    "Saved/Verification/M5/GarrisonAI/index.json"
+  ],
+  "garrisonUISucceeded": 10,
+  "garrisonUIFailed": 0
+}

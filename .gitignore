@@ -15,3 +15,5 @@
 *.slnx
 *.VC.db
 *.VC.opendb
+*.blend1
+/Art/**/*.log

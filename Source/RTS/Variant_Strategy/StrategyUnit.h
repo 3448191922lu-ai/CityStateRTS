@@ -11,6 +11,7 @@
 
 class AStrategySquad;
 class USphereComponent;
+class USkeletalMeshComponent;
 class UStaticMeshComponent;
 class UEnvQuery;
 class UEnvQueryInstanceBlueprintWrapper;
@@ -37,6 +38,9 @@ private:
 	UStaticMeshComponent* BodyMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* RiderMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UStaticMeshComponent* SelectionRing;
 
 protected:
@@ -53,9 +57,12 @@ public:
 	void IssueOrder(const FStrategyOrder& Order);
 	AStrategySquad* GetSquad() const { return Squad; }
 	float GetCurrentHealth() const { return FMath::Max(0.0f, Health); }
+	float RestoreHealth(float Amount);
+	void SetGarrisoned(bool bInGarrison);
+	bool IsGarrisoned() const { return bGarrisoned; }
 
 	virtual EStrategyFaction GetStrategyFaction() const override { return Faction; }
-	virtual bool IsStrategyAlive() const override { return Health > 0.0f; }
+	virtual bool IsStrategyAlive() const override { return Health > 0.0f && !bGarrisoned; }
 	virtual bool IsStrategyUnit() const override { return true; }
 	virtual EStrategyUnitType GetStrategyUnitType() const override { return UnitType; }
 	virtual void ReceiveStrategyDamage(float Damage, EStrategyUnitType AttackerType, EStrategyFaction SourceFaction) override;
@@ -97,6 +104,11 @@ protected:
 	void HandleMoveFinished();
 	void FindNearestTarget();
 	void UpdateCombat(float DeltaSeconds);
+	void UpdatePresentation(float DeltaSeconds);
+	void PlayVisualState(EStrategyUnitVisualState NewState);
+	void PlayAttackFeedback();
+	void PlayHitFeedback();
+	void BeginDeathPresentation();
 
 protected:
 
@@ -152,6 +164,8 @@ protected:
 	UPROPERTY()
 	TObjectPtr<AActor> CurrentTarget;
 
+	TObjectPtr<const UStrategyUnitDataAsset> Definition;
+
 	EStrategyFaction Faction = EStrategyFaction::Neutral;
 	EStrategyUnitType UnitType = EStrategyUnitType::Infantry;
 	FStrategyOrder CurrentOrder;
@@ -162,7 +176,12 @@ protected:
 	float AttackRange = 180.0f;
 	float AttackCooldown = 0.0f;
 	float TargetSearchCooldown = 0.0f;
+	float AttackVisualLockRemaining = 0.0f;
+	float HitFlashRemaining = 0.0f;
+	EStrategyUnitVisualState CurrentVisualState = EStrategyUnitVisualState::Dead;
 	bool bResumeMoveAfterBlocker = false;
+	bool bDeathPresentationStarted = false;
+	bool bGarrisoned = false;
 
 public:
 

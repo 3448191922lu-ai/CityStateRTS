@@ -1,0 +1,19 @@
+{
+  "stage": "M5-04",
+  "executable": "D:/ue project/RTS/Builds/Windows_M5_UI/RTS/Binaries/Win64/RTS.exe",
+  "log": "D:/RTS_M5_UI_Smoke_20260908_2.log",
+  "durationSeconds": 20,
+  "processAliveAtEnd": true,
+  "fatalErrors": 0,
+  "unhandledExceptions": 0,
+  "assertions": 0,
+  "lowLevelFatalErrors": 0,
+  "projectAssetLoadFailures": 0,
+  "networkFailures": 0,
+  "engineEnvironmentNotices": [
+    "Optional aqProf.dll was not present",
+    "Optional VtuneApi DLLs were not present",
+    "Optional WinPixGpuCapturer.dll was not present",
+    "No default SoundConcurrencyObject was configured"
+  ]
+}

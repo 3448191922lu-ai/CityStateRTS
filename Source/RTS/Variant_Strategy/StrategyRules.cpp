@@ -38,7 +38,7 @@ void FStrategyFactionState::RemovePopulation(int32 PopulationCost)
 	UsedPopulation = FMath::Max(0, UsedPopulation - PopulationCost);
 }
 
-void FStrategyCaptureState::Update(float DeltaSeconds, bool bPlayerPresent, bool bEnemyPresent)
+void FStrategyCaptureState::Update(float DeltaSeconds, bool bPlayerPresent, bool bEnemyPresent, float CaptureDurationSeconds)
 {
 	if (bPlayerPresent && bEnemyPresent)
 	{
@@ -64,7 +64,7 @@ void FStrategyCaptureState::Update(float DeltaSeconds, bool bPlayerPresent, bool
 		}
 
 		ProgressSeconds += DeltaSeconds;
-		if (ProgressSeconds >= 10.0f)
+		if (ProgressSeconds >= CaptureDurationSeconds)
 		{
 			Owner = Challenger;
 			Challenger = EStrategyFaction::Neutral;

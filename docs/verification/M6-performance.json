@@ -1,0 +1,22 @@
+{
+  "stage": "M6-01",
+  "date": "2026-09-09",
+  "package": "Builds/Windows_M5_Garrison",
+  "resolution": "1280x720",
+  "captureMode": "csvNoProcessingThread; hidden window; no player input",
+  "requestedSeconds": 60,
+  "capturedFrames": 300,
+  "discardedWarmupFrames": 60,
+  "measuredFrames": 240,
+  "averageFrameTimeMs": 10.122,
+  "p95FrameTimeMs": 11.505,
+  "maximumFrameTimeMs": 13.557,
+  "minimumFrameTimeMs": 8.085,
+  "exitCode": 0,
+  "runtimeErrors": 0,
+  "csv": "Builds/Windows_M5_Garrison/RTS/Saved/Profiling/CSV/Profile(20260909_003901).csv",
+  "runtimeEvidence": "Saved/Verification/Startup-20260909-003901",
+  "baselineAverageFrameTimeMs": 9.843,
+  "baselineP95FrameTimeMs": 11.228,
+  "note": "固定开局无人输入样本；同步 CSV 会增加游戏线程开销，不代表整局或满人口交战性能。"
+}

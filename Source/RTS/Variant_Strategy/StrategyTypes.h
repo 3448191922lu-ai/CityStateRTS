@@ -6,7 +6,13 @@
 #include "StrategyTypes.generated.h"
 
 class AStrategyUnit;
+class UAnimationAsset;
 class UMaterialInterface;
+class UNiagaraSystem;
+class USkeletalMesh;
+class USoundAttenuation;
+class USoundBase;
+class USoundConcurrency;
 class UStaticMesh;
 
 UENUM(BlueprintType)
@@ -39,12 +45,50 @@ enum class EStrategyBuildingType : uint8
 };
 
 UENUM(BlueprintType)
+enum class EStrategyBuildingPlacementIssue : uint8
+{
+	None,
+	MapRestricted,
+	OutsideTerritory,
+	NotNavigable,
+	Overlap
+};
+
+UENUM(BlueprintType)
+enum class EStrategyTownSpecialization : uint8
+{
+	None,
+	Trade,
+	Recruitment,
+	Fortress
+};
+
+UENUM(BlueprintType)
+enum class EStrategyTownDevelopmentState : uint8
+{
+	Unspecialized,
+	Building,
+	Active,
+	Downgrading,
+	DisabledAfterCapture
+};
+
+UENUM(BlueprintType)
 enum class EStrategyOrderType : uint8
 {
 	Move,
 	AttackMove,
 	AttackTarget,
 	Stop
+};
+
+UENUM(BlueprintType)
+enum class EStrategyUnitVisualState : uint8
+{
+	Idle,
+	Move,
+	Attack,
+	Dead
 };
 
 UINTERFACE()
@@ -125,7 +169,7 @@ struct FStrategyCaptureState
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float ProgressSeconds = 0.0f;
 
-	void Update(float DeltaSeconds, bool bPlayerPresent, bool bEnemyPresent);
+	void Update(float DeltaSeconds, bool bPlayerPresent, bool bEnemyPresent, float CaptureDurationSeconds = 10.0f);
 };
 
 UCLASS(BlueprintType)
@@ -178,6 +222,57 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Visual")
 	FVector VisualScale = FVector::OneVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<USkeletalMesh> SkeletalMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	FName FactionMaterialSlot = TEXT("Faction");
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<UAnimationAsset> IdleAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<UAnimationAsset> MoveAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<UAnimationAsset> AttackAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<UAnimationAsset> DeathAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<USkeletalMesh> RiderSkeletalMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	FName RiderFactionMaterialSlot = TEXT("Faction");
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<UAnimationAsset> RiderIdleAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<UAnimationAsset> RiderMoveAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<UAnimationAsset> RiderAttackAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<UAnimationAsset> RiderDeathAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<UStaticMesh> ProjectileMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<USoundBase> AttackSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<USoundBase> HitSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	float AttackVisualDuration = 0.35f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	float DeathVisualDuration = 0.8f;
 };
 
 UCLASS(BlueprintType)
@@ -224,4 +319,152 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Visual")
 	FVector VisualScale = FVector::OneVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	FName FactionMaterialSlot = TEXT("Faction");
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<UStaticMesh> ProjectileMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<USoundBase> AttackSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<USoundBase> HitSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Presentation")
+	TObjectPtr<USoundBase> DestroyedSound;
+};
+
+UCLASS(BlueprintType)
+class UStrategyPresentationDataAsset : public UPrimaryDataAsset
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UMaterialInterface> PlayerFactionMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UMaterialInterface> EnemyFactionMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UMaterialInterface> NeutralFactionMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UMaterialInterface> ConstructionMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UMaterialInterface> HitFlashMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UMaterialInterface> CaptureRingMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UStaticMesh> CapitalMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UStaticMesh> TownMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UStaticMesh> FlagMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UStaticMesh> TreeMeshA;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UStaticMesh> TreeMeshB;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UStaticMesh> RockMeshA;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UStaticMesh> BridgeMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UNiagaraSystem> MoveCommandEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UNiagaraSystem> AttackMoveCommandEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UNiagaraSystem> AttackTargetEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UNiagaraSystem> HitEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UNiagaraSystem> ConstructionEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UNiagaraSystem> ConstructionCompleteEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UNiagaraSystem> DestructionEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UNiagaraSystem> CaptureEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UNiagaraSystem> ProjectileTrailEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> SelectSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> MoveSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> AttackOrderSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> InvalidSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> ConstructionStartSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> ConstructionCompleteSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> TrainingCompleteSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> CaptureContestedSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> CaptureCompleteSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> MeleeHitSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> ArrowShotSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> ArrowHitSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> HoofSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> TowerShotSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> BuildingHitSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> BuildingDestroyedSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> VictorySound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundBase> DefeatSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundAttenuation> WorldAttenuation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<USoundConcurrency> CombatConcurrency;
 };

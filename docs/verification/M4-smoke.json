@@ -1,0 +1,20 @@
+{
+  "candidate": "D:\\ue project\\RTS\\Builds\\Windows_M4_VisualAudio\\RTS.exe",
+  "testedExecutable": "D:\\ue project\\RTS\\Builds\\Windows_M4_VisualAudio\\RTS\\Binaries\\Win64\\RTS.exe",
+  "durationSeconds": 25.66,
+  "exitedBeforeClose": false,
+  "exitCode": -1,
+  "closeMethod": "forced_after_hidden_window_rejected_close_request",
+  "log": "D:\\ue project\\RTS\\Saved\\Verification\\M4\\PackagedSmoke.log",
+  "scannedPatterns": {
+    "Fatal error": 0,
+    "Assertion failed": 0,
+    "Unhandled Exception": 0,
+    "Access violation": 0,
+    "Missing package": 0,
+    "Failed to load package": 0
+  },
+  "startupPassed": true,
+  "manualInputPerformed": false,
+  "note": "隐藏窗口持续运行后无法通过 CloseMainWindow 正常退出，脚本终止进程；右键和小队徽记拖动保留为人工验收项。"
+}

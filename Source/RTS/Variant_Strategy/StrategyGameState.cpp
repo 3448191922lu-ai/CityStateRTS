@@ -3,6 +3,7 @@
 #include "Engine/World.h"
 #include "NavigationSystem.h"
 #include "StrategyRules.h"
+#include "StrategyMapDefinition.h"
 #include "StrategySystems.h"
 #include "StrategyWorldActors.h"
 
@@ -23,6 +24,8 @@ namespace StrategyDataPaths
 		TEXT("/Game/CityStateRTS/Data/DA_Building_Wall.DA_Building_Wall"),
 		TEXT("/Game/CityStateRTS/Data/DA_Building_Gate.DA_Building_Gate")
 	};
+
+	constexpr const TCHAR* PresentationPath = TEXT("/Game/CityStateRTS/Data/DA_Presentation.DA_Presentation");
 }
 
 AStrategyGameState::AStrategyGameState()
@@ -107,6 +110,17 @@ const UStrategyBuildingDataAsset* AStrategyGameState::GetBuildingDefinition(EStr
 	return BuildingDefinitions.FindChecked(BuildingType);
 }
 
+const UStrategyPresentationDataAsset* AStrategyGameState::GetPresentationDefinition()
+{
+	EnsureDefinitionsLoaded();
+	return PresentationDefinition;
+}
+
+const UStrategyPresentationDataAsset* AStrategyGameState::GetPresentationDefinition() const
+{
+	return const_cast<AStrategyGameState*>(this)->GetPresentationDefinition();
+}
+
 AStrategySquad* AStrategyGameState::SpawnSquad(EStrategyFaction Faction, EStrategyUnitType UnitType, const FVector& Location, bool bPopulationReserved)
 {
 	const UStrategyUnitDataAsset* Definition = GetUnitDefinition(UnitType);
@@ -130,7 +144,11 @@ AStrategyBuilding* AStrategyGameState::TryPlaceBuilding(EStrategyFaction Faction
 		return nullptr;
 	}
 
-	AStrategyBuilding* Building = GetWorld()->SpawnActor<AStrategyBuilding>(AStrategyBuilding::StaticClass(), Location, Rotation);
+	FNavLocation ProjectedLocation;
+	UNavigationSystemV1::GetCurrent(GetWorld())->ProjectPointToNavigation(Location, ProjectedLocation,
+		FVector(Definition->FootprintExtent.X, Definition->FootprintExtent.Y, 300.0f));
+	const FVector GroundLocation = FStrategyBuildingPlacementRules::ResolveGroundLocation(Location, ProjectedLocation.Location);
+	AStrategyBuilding* Building = GetWorld()->SpawnActor<AStrategyBuilding>(AStrategyBuilding::StaticClass(), GroundLocation, Rotation);
 	check(Building);
 	Building->Initialize(Faction, Definition);
 	return Building;
@@ -185,17 +203,34 @@ AStrategyBuilding* AStrategyGameState::TryUpgradeWallToGate(EStrategyFaction Fac
 bool AStrategyGameState::CanPlaceBuilding(EStrategyFaction Faction, EStrategyBuildingType BuildingType, const FVector& Location,
 	const FRotator& Rotation)
 {
+	return GetBuildingPlacementIssue(Faction, BuildingType, Location, Rotation)
+		== EStrategyBuildingPlacementIssue::None;
+}
+
+void AStrategyGameState::NotifyFaction(EStrategyFaction Faction, const FString& Message)
+{
+	FactionNotification.Broadcast(Faction, Message);
+}
+
+EStrategyBuildingPlacementIssue AStrategyGameState::GetBuildingPlacementIssue(EStrategyFaction Faction,
+	EStrategyBuildingType BuildingType, const FVector& Location, const FRotator& Rotation)
+{
 	const UStrategyBuildingDataAsset* Definition = GetBuildingDefinition(BuildingType);
+	const FStrategySkirmishMapDefinition MapDefinition = FStrategyMapDefinitions::Resolve(GetWorld()->GetMapName());
+	if (!FStrategyMapDefinitions::IsBuildingAllowed(MapDefinition, Location, Definition->FootprintExtent))
+	{
+		return EStrategyBuildingPlacementIssue::MapRestricted;
+	}
 	if (!IsFootprintInTerritory(Faction, Location, Definition->FootprintExtent, Rotation.Yaw))
 	{
-		return false;
+		return EStrategyBuildingPlacementIssue::OutsideTerritory;
 	}
 
 	FNavLocation ProjectedLocation;
 	if (!UNavigationSystemV1::GetCurrent(GetWorld())->ProjectPointToNavigation(Location, ProjectedLocation,
 		FVector(Definition->FootprintExtent.X, Definition->FootprintExtent.Y, 300.0f)))
 	{
-		return false;
+		return EStrategyBuildingPlacementIssue::NotNavigable;
 	}
 
 	FCollisionObjectQueryParams ObjectTypes;
@@ -203,8 +238,10 @@ bool AStrategyGameState::CanPlaceBuilding(EStrategyFaction Faction, EStrategyBui
 	ObjectTypes.AddObjectTypesToQuery(ECC_WorldDynamic);
 	ObjectTypes.AddObjectTypesToQuery(ECC_GameTraceChannel1);
 	ObjectTypes.AddObjectTypesToQuery(ECC_GameTraceChannel2);
-	return !GetWorld()->OverlapAnyTestByObjectType(Location + FVector(0.0f, 0.0f, 251.0f), Rotation.Quaternion(), ObjectTypes,
-		FCollisionShape::MakeBox(FVector(Definition->FootprintExtent.X, Definition->FootprintExtent.Y, 250.0f)));
+	const FVector GroundLocation = FStrategyBuildingPlacementRules::ResolveGroundLocation(Location, ProjectedLocation.Location);
+	return GetWorld()->OverlapAnyTestByObjectType(GroundLocation + FVector(0.0f, 0.0f, 251.0f), Rotation.Quaternion(), ObjectTypes,
+		FCollisionShape::MakeBox(FVector(Definition->FootprintExtent.X, Definition->FootprintExtent.Y, 250.0f)))
+		? EStrategyBuildingPlacementIssue::Overlap : EStrategyBuildingPlacementIssue::None;
 }
 
 bool AStrategyGameState::IsLocationInTerritory(EStrategyFaction Faction, const FVector& Location, float FootprintRadius) const
@@ -246,23 +283,122 @@ void AStrategyGameState::UnregisterSquad(AStrategySquad* Squad)
 void AStrategyGameState::RegisterBuilding(AStrategyBuilding* Building)
 {
 	Buildings.AddUnique(Building);
+	RecalculateFactionEconomy();
 }
 
 void AStrategyGameState::UnregisterBuilding(AStrategyBuilding* Building)
 {
 	Buildings.Remove(Building);
+	RecalculateFactionEconomy();
 }
 
 void AStrategyGameState::RegisterControlPoint(AStrategyControlPoint* Point)
 {
 	ControlPoints.AddUnique(Point);
-	ApplyPointContribution(Point->GetStrategyFaction(), 1, Point);
+	RecalculateFactionEconomy();
 }
 
 void AStrategyGameState::ChangeControlPointOwner(AStrategyControlPoint* Point, EStrategyFaction OldOwner, EStrategyFaction NewOwner)
 {
-	ApplyPointContribution(OldOwner, -1, Point);
-	ApplyPointContribution(NewOwner, 1, Point);
+	RecalculateFactionEconomy();
+}
+
+bool AStrategyGameState::TryStartTownSpecialization(EStrategyFaction Faction, AStrategyControlPoint* Town,
+	EStrategyTownSpecialization Specialization)
+{
+	if (!Town || Town->IsCapital() || Town->GetStrategyFaction() != Faction
+		|| !FStrategyTownDevelopmentRules::CanStartSpecialization(Town->GetTownDevelopment(), Specialization,
+			GetFactionState(Faction).Gold)
+		|| !TrySpendAndReserve(Faction, FStrategyTownDevelopmentRules::SpecializationCost, 0))
+	{
+		return false;
+	}
+	return Town->StartSpecialization(Specialization);
+}
+
+bool AStrategyGameState::TryStartTownDowngrade(EStrategyFaction Faction, AStrategyControlPoint* Town)
+{
+	return Town && !Town->IsCapital() && Town->GetStrategyFaction() == Faction && Town->StartDowngrade();
+}
+
+void AStrategyGameState::NotifyTownDevelopmentChanged(AStrategyControlPoint* Town)
+{
+	RecalculateFactionEconomy();
+}
+
+void AStrategyGameState::RecalculateFactionEconomy()
+{
+	TArray<FStrategyTownContribution> Contributions;
+	for (const AStrategyControlPoint* Point : ControlPoints)
+	{
+		if (!IsValid(Point))
+		{
+			continue;
+		}
+		const bool bConnected = IsTownSupplyConnected(Point);
+		Contributions.Add({Point->GetStrategyFaction(),
+			Point->GetIncomePerSecond() + FStrategyTownSpecializationRules::GetIncomeBonus(
+				Point->GetTownDevelopment().Specialization, Point->GetTownDevelopment().State, bConnected),
+			Point->GetPopulationBonus() + FStrategyTownSpecializationRules::GetPopulationBonus(
+				Point->GetTownDevelopment().Specialization, Point->GetTownDevelopment().State)});
+	}
+
+	for (const EStrategyFaction Faction : {EStrategyFaction::Player, EStrategyFaction::Enemy})
+	{
+		int32 BuildingPopulation = 0;
+		for (const AStrategyBuilding* Building : Buildings)
+		{
+			if (IsValid(Building) && Building->GetStrategyFaction() == Faction && Building->IsConstructionComplete())
+			{
+				BuildingPopulation += GetBuildingDefinition(Building->GetBuildingType())->PopulationBonus;
+			}
+		}
+		const FStrategyFactionEconomyTotals Totals = FStrategyFactionEconomyRules::Calculate(
+			Faction, Contributions, BuildingPopulation);
+		FStrategyFactionState& State = GetMutableFactionState(Faction);
+		State.IncomePerSecond = Totals.IncomePerSecond;
+		State.PopulationCap = Totals.PopulationCap;
+		State.OwnedPoints = Totals.OwnedPoints;
+	}
+}
+
+bool AStrategyGameState::IsTownSupplyConnected(const AStrategyControlPoint* Town) const
+{
+	if (!IsValid(Town) || Town->IsCapital() || Town->GetStrategyFaction() == EStrategyFaction::Neutral)
+	{
+		return false;
+	}
+	TArray<FStrategySupplyNode> Nodes;
+	int32 TownIndex = INDEX_NONE;
+	for (const AStrategyControlPoint* Point : ControlPoints)
+	{
+		if (IsValid(Point))
+		{
+			if (Point == Town)
+			{
+				TownIndex = Nodes.Num();
+			}
+			const FVector Location = Point->GetActorLocation();
+			Nodes.Add({FVector2D(Location.X, Location.Y), Point->GetStrategyFaction(), Point->IsCapital()});
+		}
+	}
+	return FStrategySupplyRules::FindConnectedTownIndices(Nodes, Town->GetStrategyFaction()).Contains(TownIndex);
+}
+
+float AStrategyGameState::GetTrainingTimeMultiplierAt(EStrategyFaction Faction, const FVector& Location) const
+{
+	float Multiplier = 1.0f;
+	for (const AStrategyControlPoint* Point : ControlPoints)
+	{
+		if (IsValid(Point) && !Point->IsCapital() && Point->GetStrategyFaction() == Faction
+			&& FVector::DistSquared2D(Location, Point->GetActorLocation()) <= FMath::Square(Point->GetTerritoryRadius()))
+		{
+			Multiplier = FMath::Min(Multiplier, FStrategyTownSpecializationRules::GetTrainingTimeMultiplier(
+				Point->GetTownDevelopment().Specialization, Point->GetTownDevelopment().State,
+				IsTownSupplyConnected(Point)));
+		}
+	}
+	return Multiplier;
 }
 
 AStrategyControlPoint* AStrategyGameState::FindCapital(EStrategyFaction Faction) const
@@ -280,6 +416,16 @@ AStrategyControlPoint* AStrategyGameState::FindCapital(EStrategyFaction Faction)
 bool AStrategyGameState::IsVisibleToFaction(EStrategyFaction Faction, const FVector& Location) const
 {
 	return !FogOfWar || FogOfWar->IsVisibleToFaction(Faction, Location);
+}
+
+bool AStrategyGameState::IsExploredToFaction(EStrategyFaction Faction, const FVector& Location) const
+{
+	return !FogOfWar || FogOfWar->IsExploredToFaction(Faction, Location);
+}
+
+UTexture2D* AStrategyGameState::GetPlayerFogTexture() const
+{
+	return FogOfWar ? FogOfWar->GetPlayerFogTexture() : nullptr;
 }
 
 void AStrategyGameState::NotifyCapitalDestroyed(EStrategyFaction DestroyedFaction)
@@ -311,17 +457,7 @@ void AStrategyGameState::EnsureDefinitionsLoaded()
 		checkf(Definition, TEXT("缺少建筑数据资产：%s"), StrategyDataPaths::BuildingPaths[Index]);
 		BuildingDefinitions.Add(static_cast<EStrategyBuildingType>(Index), Definition);
 	}
-}
 
-void AStrategyGameState::ApplyPointContribution(EStrategyFaction Faction, int32 Direction, const AStrategyControlPoint* Point)
-{
-	if (Faction == EStrategyFaction::Neutral || !Factions.Contains(Faction))
-	{
-		return;
-	}
-
-	FStrategyFactionState& State = GetMutableFactionState(Faction);
-	State.OwnedPoints = FMath::Max(0, State.OwnedPoints + Direction);
-	State.IncomePerSecond = FMath::Max(0.0f, State.IncomePerSecond + Direction * Point->GetIncomePerSecond());
-	State.PopulationCap = FMath::Clamp(State.PopulationCap + Direction * Point->GetPopulationBonus(), 0, 60);
+	PresentationDefinition = LoadObject<UStrategyPresentationDataAsset>(nullptr, StrategyDataPaths::PresentationPath);
+	checkf(PresentationDefinition, TEXT("缺少共享表现数据资产：%s"), StrategyDataPaths::PresentationPath);
 }

@@ -1,0 +1,21 @@
+{
+  "stage": "M5-04",
+  "editorBuild": "Succeeded",
+  "automationGroup": "RTS.Strategy",
+  "report": "Saved/Verification/M5/UIFinal/index.json",
+  "succeeded": 42,
+  "succeededWithWarnings": 0,
+  "failed": 0,
+  "notRun": 0,
+  "uiSucceeded": 7,
+  "uiFailed": 0,
+  "stabilityRegressionReport": "Saved/Verification/M5/UIStability/index.json",
+  "stabilityRegressionSucceeded": 8,
+  "stabilityRegressionFailed": 0,
+  "integerScaleRegressionReport": "Saved/Verification/M5/UIIntegerScale/index.json",
+  "integerScaleRegressionSucceeded": 8,
+  "integerScaleRegressionFailed": 0,
+  "dynamicLayoutRegressionReport": "Saved/Verification/M5/UIDynamicLayout/index.json",
+  "dynamicLayoutRegressionSucceeded": 9,
+  "dynamicLayoutRegressionFailed": 0
+}

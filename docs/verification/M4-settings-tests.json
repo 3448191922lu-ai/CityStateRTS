@@ -1,0 +1,59 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "DESKTOP-101AJPT",
+			"instance": "55B112274D44C994192BD1828EA6CC2E",
+			"instanceName": "DESKTOP-101AJPT-21232",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (23H2) [10.0.22631.7376] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+			"cPUModel": "12th Gen Intel(R) Core(TM) i7-12700H",
+			"rAMInGB": 16,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.09.07-11.39.07",
+	"succeeded": 2,
+	"succeededWithWarnings": 0,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 0.017847798764705658,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "SettingsMenuFlow",
+			"fullTestPath": "RTS.Strategy.Systems.SettingsMenuFlow",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"55B112274D44C994192BD1828EA6CC2E"
+			],
+			"duration": 0.0013751983642578125,
+			"dateTime": "2026.09.07-11.39.07",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "SettingsRules",
+			"fullTestPath": "RTS.Strategy.Systems.SettingsRules",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"55B112274D44C994192BD1828EA6CC2E"
+			],
+			"duration": 0.016472600400447845,
+			"dateTime": "2026.09.07-11.39.07",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}

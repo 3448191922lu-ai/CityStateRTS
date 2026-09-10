@@ -3,6 +3,9 @@
 #include "Misc/AutomationTest.h"
 #include "StrategySystems.h"
 #include "StrategyArtStyle.h"
+#include "StrategyGameUserSettings.h"
+#include "StrategyMapDefinition.h"
+#include "StrategyPauseMenu.h"
 #include "StrategyPlayerController.h"
 #include "Engine/World.h"
 #include "InputActionValue.h"
@@ -47,6 +50,52 @@ bool FStrategyFogGridTest::RunTest(const FString& Parameters)
 	Grid.BeginVisibilityUpdate();
 	TestFalse(TEXT("下一次更新后旧区域不再当前可见"), Grid.IsVisible(FVector2D::ZeroVector));
 	TestTrue(TEXT("旧区域应保持已探索"), Grid.IsExplored(FVector2D::ZeroVector));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FStrategyMapDefinitionTest,
+	"RTS.Strategy.Systems.MapDefinition",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategyMapDefinitionTest::RunTest(const FString& Parameters)
+{
+	const FStrategySkirmishMapDefinition Original = FStrategyMapDefinitions::Resolve(TEXT("LVL_CityStateSkirmish"));
+	TestFalse(TEXT("原地图不得生成河谷地形"), Original.bSpawnRiverValleyTerrain);
+	TestEqual(TEXT("原地图必须保留三座城镇"), Original.NeutralTowns.Num(), 3);
+	TestTrue(TEXT("原地图北部城镇坐标保持不变"), Original.NeutralTowns[1].Equals(FVector(0.0f, 4000.0f, 0.0f)));
+	TestTrue(TEXT("摄像机最小边界必须保持原玩法范围"), Original.CameraMin.Equals(FVector2D(-11000.0f, -9000.0f)));
+	TestTrue(TEXT("摄像机最大边界必须保持原玩法范围"), Original.CameraMax.Equals(FVector2D(11000.0f, 9000.0f)));
+	TestTrue(TEXT("迷雾最小边界必须覆盖扩大的视觉地面"), Original.FogMin.Equals(FVector2D(-16000.0f, -14000.0f)));
+	TestTrue(TEXT("迷雾最大边界必须覆盖扩大的视觉地面"), Original.FogMax.Equals(FVector2D(16000.0f, 14000.0f)));
+	TestEqual(TEXT("扩大后迷雾网格必须保持足够精度"), Original.FogGridSize, FIntPoint(192, 160));
+
+	FStrategyFogGrid OuterFog;
+	OuterFog.Initialize(Original.FogGridSize.X, Original.FogGridSize.Y, Original.FogMin, Original.FogMax);
+	OuterFog.BeginVisibilityUpdate();
+	OuterFog.Reveal(FVector2D(-15000.0f, 0.0f), 200.0f);
+	TestTrue(TEXT("原边界外的视觉地面必须由迷雾网格覆盖"), OuterFog.IsVisible(FVector2D(-15000.0f, 0.0f)));
+
+	const FStrategySkirmishMapDefinition River = FStrategyMapDefinitions::Resolve(TEXT("UEDPIE_0_LVL_RiverValleySkirmish"));
+	TestTrue(TEXT("PIE 前缀不得影响河谷地图识别"), River.bSpawnRiverValleyTerrain);
+	TestEqual(TEXT("河谷地图必须有三座城镇"), River.NeutralTowns.Num(), 3);
+	TestTrue(TEXT("北部城镇必须略偏玩家侧"), River.NeutralTowns[0].Equals(FVector(-2200.0f, 3900.0f, 0.0f)));
+	TestTrue(TEXT("中央城镇必须位于浅滩"), River.NeutralTowns[1].Equals(FVector::ZeroVector));
+	TestTrue(TEXT("南部城镇必须略偏 AI 侧"), River.NeutralTowns[2].Equals(FVector(2200.0f, -3900.0f, 0.0f)));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FStrategyMapBuildRestrictionTest,
+	"RTS.Strategy.Systems.MapBuildRestriction",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategyMapBuildRestrictionTest::RunTest(const FString& Parameters)
+{
+	const FStrategySkirmishMapDefinition River = FStrategyMapDefinitions::Resolve(TEXT("LVL_RiverValleySkirmish"));
+	const FVector2D Footprint(200.0f, 200.0f);
+	TestFalse(TEXT("北桥必须禁止建造"), FStrategyMapDefinitions::IsBuildingAllowed(River, FVector(0.0f, 3000.0f, 0.0f), Footprint));
+	TestFalse(TEXT("中央浅滩必须禁止建造"), FStrategyMapDefinitions::IsBuildingAllowed(River, FVector::ZeroVector, Footprint));
+	TestTrue(TEXT("桥头外侧必须允许地图规则建造"), FStrategyMapDefinitions::IsBuildingAllowed(River, FVector(-1800.0f, 3000.0f, 0.0f), Footprint));
+	TestTrue(TEXT("主城附近必须允许地图规则建造"), FStrategyMapDefinitions::IsBuildingAllowed(River, FVector(-5000.0f, 0.0f, 0.0f), Footprint));
 	return true;
 }
 
@@ -95,6 +144,49 @@ bool FStrategyCameraMovementTest::RunTest(const FString& Parameters)
 	const FVector RotatedWorldRight = FStrategyCameraMovement::ScreenToWorld(FVector2D(1.0f, 0.0f), 45.0f);
 	TestTrue(TEXT("旋转相机后 W 仍对应屏幕向上"), RotatedWorldUp.Equals(FVector(UE_SQRT_2 / 2.0f, UE_SQRT_2 / 2.0f, 0.0f), KINDA_SMALL_NUMBER));
 	TestTrue(TEXT("旋转相机后 D 仍对应屏幕向右"), RotatedWorldRight.Equals(FVector(-UE_SQRT_2 / 2.0f, UE_SQRT_2 / 2.0f, 0.0f), KINDA_SMALL_NUMBER));
+
+	const FVector CameraLocation(-8800.0f, 1800.0f, 4500.0f);
+	const float CameraPitch = -53.0f;
+	const float OldYaw = -45.0f;
+	const float NewYaw = 45.0f;
+	const FVector OldForward = FRotator(CameraPitch, OldYaw, 0.0f).Vector();
+	const FVector OldFocus = CameraLocation + OldForward * (CameraLocation.Z / -OldForward.Z);
+	const FVector OrbitLocation = FStrategyCameraMovement::GetOrbitCameraLocation(
+		CameraLocation, CameraPitch, OldYaw, NewYaw);
+	const FVector NewForward = FRotator(CameraPitch, NewYaw, 0.0f).Vector();
+	const FVector NewFocus = OrbitLocation + NewForward * (OrbitLocation.Z / -NewForward.Z);
+	TestTrue(TEXT("旋转后摄像机必须围绕同一地面视野中心"), NewFocus.Equals(OldFocus, 0.1f));
+	TestTrue(TEXT("旋转镜头不能改变摄像机高度"),
+		FMath::IsNearlyEqual(OrbitLocation.Z, CameraLocation.Z, KINDA_SMALL_NUMBER));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FStrategyCameraBoundsTest,
+	"RTS.Strategy.Systems.CameraBounds",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategyCameraBoundsTest::RunTest(const FString& Parameters)
+{
+	const FVector2D Extents = FStrategyCameraBoundsRules::GetGroundViewExtents(10000.0f, 16.0f / 9.0f, 53.0f, -45.0f);
+	TestTrue(TEXT("最大缩放并旋转四十五度时必须覆盖完整地面视野"),
+		Extents.Equals(FVector2D(10712.362f, 10712.362f), 1.0f));
+
+	const FVector2D Clamped = FStrategyCameraBoundsRules::ClampGroundFocus(
+		FVector2D(9000.0f, 8000.0f), FVector2D(-11000.0f, -9000.0f), FVector2D(11000.0f, 9000.0f), Extents, 200.0f);
+	TestTrue(TEXT("镜头焦点必须退回地图安全范围"),
+		Clamped.Equals(FVector2D(87.638f, 0.0f), 1.0f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FStrategyCameraUltrawideBoundsTest,
+	"RTS.Strategy.Systems.CameraUltrawideBounds",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategyCameraUltrawideBoundsTest::RunTest(const FString& Parameters)
+{
+	const FVector2D Extents = FStrategyCameraBoundsRules::GetGroundViewExtents(7000.0f, 2559.0f / 1089.0f, 53.0f, -45.0f);
+	TestTrue(TEXT("超宽屏必须计入 UE 保持纵向视野后扩大的横向范围"),
+		Extents.Equals(FVector2D(8914.49f, 8914.49f), 1.0f));
 	return true;
 }
 
@@ -168,6 +260,20 @@ bool FStrategyGateCollisionRulesTest::RunTest(const FString& Parameters)
 		EStrategyFaction::Player, EStrategyFaction::Enemy, true));
 	TestTrue(TEXT("施工中的城门必须阻挡己方单位"), FStrategyGateCollisionRules::ShouldBlock(
 		EStrategyFaction::Player, EStrategyFaction::Player, false));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FStrategyBuildingGroundPlacementRulesTest,
+	"RTS.Strategy.Systems.BuildingGroundPlacementRules",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategyBuildingGroundPlacementRulesTest::RunTest(const FString& Parameters)
+{
+	const FVector RequestedLocation(1200.0f, -800.0f, 500.0f);
+	const FVector ProjectedGround(1192.0f, -795.0f, 12.0f);
+	TestEqual(TEXT("点击建筑顶部时保留平面坐标并使用导航地面高度"),
+		FStrategyBuildingPlacementRules::ResolveGroundLocation(RequestedLocation, ProjectedGround),
+		FVector(1200.0f, -800.0f, 12.0f));
 	return true;
 }
 
@@ -247,6 +353,108 @@ bool FStrategySquadMarkerClickSequenceTest::RunTest(const FString& Parameters)
 	Controller->SelectHoldStarted(FInputActionValue(true));
 	TestFalse(TEXT("拖拽后的下一次按下应恢复普通点击"), Controller->bConsumeNextSelectClick);
 	World->DestroyWorld(false);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FStrategyIntroPromptRulesTest,
+	"RTS.Strategy.Systems.IntroPromptRules",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategyIntroPromptRulesTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("开局七秒内提示必须完全可见"), FStrategyIntroPromptRules::GetOpacity(6.9f), 1.0f);
+	TestEqual(TEXT("最后一秒提示必须线性淡出"), FStrategyIntroPromptRules::GetOpacity(7.5f), 0.5f);
+	TestEqual(TEXT("八秒后提示必须隐藏"), FStrategyIntroPromptRules::GetOpacity(8.0f), 0.0f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FStrategyOrderTargetRulesTest,
+	"RTS.Strategy.Systems.OrderTargetRules",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategyOrderTargetRulesTest::RunTest(const FString& Parameters)
+{
+	TestTrue(TEXT("可见存活敌军允许成为攻击目标"), FStrategyOrderTargetRules::CanAttack(
+		EStrategyFaction::Player, EStrategyFaction::Enemy, true, true));
+	TestFalse(TEXT("迷雾中的敌军不得成为攻击目标"), FStrategyOrderTargetRules::CanAttack(
+		EStrategyFaction::Player, EStrategyFaction::Enemy, true, false));
+	TestFalse(TEXT("己方单位不得成为攻击目标"), FStrategyOrderTargetRules::CanAttack(
+		EStrategyFaction::Player, EStrategyFaction::Player, true, true));
+	TestFalse(TEXT("死亡敌军不得成为攻击目标"), FStrategyOrderTargetRules::CanAttack(
+		EStrategyFaction::Player, EStrategyFaction::Enemy, false, true));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FStrategySettingsRulesTest,
+	"RTS.Strategy.Systems.SettingsRules",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategySettingsRulesTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("负音量限制为零"), FStrategySettingsRules::SnapMasterVolume(-0.3f), 0.0f);
+	TestEqual(TEXT("音量按百分之五取整"), FStrategySettingsRules::SnapMasterVolume(0.53f), 0.55f);
+	TestEqual(TEXT("过高音量限制为一"), FStrategySettingsRules::SnapMasterVolume(1.4f), 1.0f);
+	TestEqual(TEXT("低画质映射"), FStrategySettingsRules::QualityIndexToLevel(0), 0);
+	TestEqual(TEXT("史诗画质映射"), FStrategySettingsRules::QualityIndexToLevel(3), 3);
+	TestEqual(TEXT("窗口模式映射"), FStrategySettingsRules::WindowModeIndexToValue(0), EWindowMode::Windowed);
+	TestEqual(TEXT("无边框模式映射"), FStrategySettingsRules::WindowModeIndexToValue(1), EWindowMode::WindowedFullscreen);
+	TestEqual(TEXT("独占全屏映射"), FStrategySettingsRules::WindowModeIndexToValue(2), EWindowMode::Fullscreen);
+	TestEqual(TEXT("分辨率显示"), FStrategySettingsRules::FormatResolution(FIntPoint(1920, 1080)), FString(TEXT("1920 x 1080")));
+	TestEqual(TEXT("固定北向设置索引"), FStrategySettingsRules::MinimapOrientationToIndex(
+		EStrategyMinimapOrientation::NorthUp), 0);
+	TestEqual(TEXT("跟随摄像机设置索引"), FStrategySettingsRules::MinimapOrientationToIndex(
+		EStrategyMinimapOrientation::FollowCamera), 1);
+	TestEqual(TEXT("固定北向索引解析"), FStrategySettingsRules::MinimapOrientationFromIndex(0),
+		EStrategyMinimapOrientation::NorthUp);
+	TestEqual(TEXT("跟随摄像机索引解析"), FStrategySettingsRules::MinimapOrientationFromIndex(1),
+		EStrategyMinimapOrientation::FollowCamera);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FStrategySettingsMenuFlowTest,
+	"RTS.Strategy.Systems.SettingsMenuFlow",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategySettingsMenuFlowTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("暂停页 Esc 关闭菜单"),
+		FStrategyPauseMenuRules::ResolveEscape(EStrategyPauseMenuPage::Pause),
+		EStrategyPauseMenuEscapeAction::CloseMenu);
+	TestEqual(TEXT("设置页 Esc 放弃并返回"),
+		FStrategyPauseMenuRules::ResolveEscape(EStrategyPauseMenuPage::Settings),
+		EStrategyPauseMenuEscapeAction::DiscardAndReturn);
+
+	TArray<FIntPoint> Resolutions = { FIntPoint(1920, 1080), FIntPoint(1280, 720), FIntPoint(1920, 1080) };
+	FStrategyPauseMenuRules::NormalizeResolutions(Resolutions, FIntPoint(1600, 900));
+	TestEqual(TEXT("分辨率去重并保留当前项"), Resolutions.Num(), 3);
+	TestEqual(TEXT("分辨率按面积排序"), Resolutions[0], FIntPoint(1280, 720));
+	TestTrue(TEXT("当前分辨率存在"), Resolutions.Contains(FIntPoint(1600, 900)));
+	const UStrategyPauseMenu* Menu = NewObject<UStrategyPauseMenu>();
+	TestTrue(TEXT("暂停菜单必须能获取键盘焦点以处理 Esc"), Menu->IsFocusable());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FStrategyPresentationRulesTest,
+	"RTS.Strategy.Systems.PresentationRules",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FStrategyPresentationRulesTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("死亡优先"), FStrategyPresentationRules::ResolveUnitVisualState(false, true, 100.0f), EStrategyUnitVisualState::Dead);
+	TestEqual(TEXT("攻击优先于移动"), FStrategyPresentationRules::ResolveUnitVisualState(true, true, 100.0f), EStrategyUnitVisualState::Attack);
+	TestEqual(TEXT("有速度时移动"), FStrategyPresentationRules::ResolveUnitVisualState(true, false, 1.0f), EStrategyUnitVisualState::Move);
+	TestEqual(TEXT("静止时待机"), FStrategyPresentationRules::ResolveUnitVisualState(true, false, 0.0f), EStrategyUnitVisualState::Idle);
+
+	TestTrue(TEXT("玩家反馈不受玩家视野限制"), FStrategyPresentationRules::CanPlayWorldFeedback(EStrategyFaction::Player, false));
+	TestTrue(TEXT("可见敌军允许播放反馈"), FStrategyPresentationRules::CanPlayWorldFeedback(EStrategyFaction::Enemy, true));
+	TestFalse(TEXT("不可见敌军不得泄露反馈"), FStrategyPresentationRules::CanPlayWorldFeedback(EStrategyFaction::Enemy, false));
+	TestTrue(TEXT("可见中立目标允许播放反馈"), FStrategyPresentationRules::CanPlayWorldFeedback(EStrategyFaction::Neutral, true));
+	TestFalse(TEXT("不可见中立目标不得播放反馈"), FStrategyPresentationRules::CanPlayWorldFeedback(EStrategyFaction::Neutral, false));
+
+	const FVector ImportedForward(0.0f, 1.0f, 0.0f);
+	const FVector CorrectedForward = FStrategyPresentationRules::GetImportedCharacterMeshRotation().RotateVector(ImportedForward);
+	TestTrue(TEXT("导入角色的 +Y 前向必须校正到单位 +X 移动方向"),
+		CorrectedForward.Equals(FVector::ForwardVector, KINDA_SMALL_NUMBER));
 	return true;
 }
 

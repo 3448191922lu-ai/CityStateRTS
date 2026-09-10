@@ -1,0 +1,19 @@
+{
+  "map": "/Game/CityStateRTS/Maps/LVL_CityStateSkirmish",
+  "observedSeconds": 77,
+  "endedBy": "user_closed_window",
+  "fullFiveMinuteObservation": "cancelled_by_user",
+  "observed": {
+    "firstAction": "Capture",
+    "ownedPoints": 2,
+    "incomePerSecond": 8.0,
+    "firstSpecialization": "Trade",
+    "secondSpecialization": "not_observed",
+    "ordinaryBuildTrainAttack": "not_observed_in_available_interval"
+  },
+  "fairnessReview": "Threat checks and counter-unit selection query only player squads currently visible to Enemy; town positions and ownership are public fixed objectives.",
+  "fatalErrors": 0,
+  "unhandledExceptions": 0,
+  "assertionFailures": 0,
+  "log": "Saved/Verification/M5/AIObservation.log"
+}

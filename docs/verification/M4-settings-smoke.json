@@ -1,0 +1,24 @@
+{
+  "candidate": "D:\\ue project\\RTS\\Builds\\Windows_M4_Settings\\RTS.exe",
+  "log": "D:\\ue_project_RTS_M4_Settings_FinalSmoke.log",
+  "checkedAt": "2026-09-07T19:39:30+08:00",
+  "elapsedSeconds": 20.08,
+  "stayedAliveUntilScriptedClose": true,
+  "rawKeywordCounts": {
+    "Fatal error": 0,
+    "Unhandled Exception": 0,
+    "Assertion failed": 0,
+    "LowLevelFatalError": 0,
+    "Couldn't find file": 0,
+    "Failed to load": 5
+  },
+  "classifiedProjectFailureCount": 0,
+  "knownOptionalStartupMessages": [
+    "aqProf.dll",
+    "VtuneApi.dll",
+    "VtuneApi32e.dll",
+    "WinPixGpuCapturer.dll",
+    "No default SoundConcurrencyObject specified (or failed to load)"
+  ],
+  "notes": "5 条 Failed to load 均为 UE 可选分析工具 DLL 或未配置的默认 SoundConcurrency 提示，不是项目资源缺失；烟雾检查不模拟菜单点击或设置持久化。"
+}

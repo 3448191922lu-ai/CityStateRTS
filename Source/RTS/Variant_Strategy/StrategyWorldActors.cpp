@@ -2,26 +2,37 @@
 
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/DecalComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Texture2D.h"
 #include "EngineUtils.h"
+#include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "NavigationSystem.h"
+#include "NiagaraFunctionLibrary.h"
 #include "StrategyGameState.h"
+#include "StrategyMapDefinition.h"
+#include "StrategyPresentationActors.h"
 #include "StrategyRules.h"
 #include "StrategyUnit.h"
 #include "StrategyArtStyle.h"
 
 namespace StrategyVisuals
 {
-	static void ApplyFactionMaterial(UStaticMeshComponent* Mesh, EStrategyFaction Faction)
+	static UMaterialInterface* GetFactionMaterial(const UStrategyPresentationDataAsset* Presentation, EStrategyFaction Faction)
 	{
-		UMaterialInterface* BaseMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
-		UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, Mesh);
-		Material->SetVectorParameterValue(TEXT("Color"), StrategyArtStyle::GetFactionColor(Faction));
-		Mesh->SetMaterial(0, Material);
+		return Faction == EStrategyFaction::Player ? Presentation->PlayerFactionMaterial.Get()
+			: Faction == EStrategyFaction::Enemy ? Presentation->EnemyFactionMaterial.Get()
+			: Presentation->NeutralFactionMaterial.Get();
+	}
+
+	static void ApplyFactionMaterial(UStaticMeshComponent* Mesh, FName Slot, EStrategyFaction Faction,
+		const UStrategyPresentationDataAsset* Presentation)
+	{
+		const int32 MaterialIndex = Slot.IsNone() ? 0 : Mesh->GetMaterialIndex(Slot);
+		Mesh->SetMaterial(MaterialIndex, GetFactionMaterial(Presentation, Faction));
 	}
 }
 
@@ -35,14 +46,34 @@ AStrategySquad::AStrategySquad()
 void AStrategySquad::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (GarrisonPoint)
+	{
+		SetActorLocation(GarrisonPoint->GetActorLocation());
+		return;
+	}
 	if (!Members.IsEmpty())
 	{
 		SetActorLocation(GetCenterLocation());
+	}
+	if (RequestedGarrisonPoint && FVector::DistSquared2D(GetCenterLocation(), RequestedGarrisonPoint->GetActorLocation())
+		<= FMath::Square(FStrategyGarrisonRules::ExitDistance))
+	{
+		AStrategyControlPoint* Point = RequestedGarrisonPoint;
+		RequestedGarrisonPoint = nullptr;
+		if (!Point->TryGarrisonSquad(this))
+		{
+			GetWorld()->GetGameState<AStrategyGameState>()->NotifyFaction(Faction, TEXT("当前据点无法继续驻防"));
+		}
 	}
 }
 
 void AStrategySquad::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (GarrisonPoint)
+	{
+		GarrisonPoint->RemoveGarrisonedSquad(this);
+		GarrisonPoint = nullptr;
+	}
 	if (AStrategyGameState* State = GetWorld() ? GetWorld()->GetGameState<AStrategyGameState>() : nullptr)
 	{
 		State->UnregisterSquad(this);
@@ -63,25 +94,33 @@ void AStrategySquad::Initialize(EStrategyFaction InFaction, const UStrategyUnitD
 		State->CommitPopulation(Faction, Definition->PopulationCost);
 	}
 
+	for (int32 Index = 0; Index < Definition->MemberCount; ++Index)
+	{
+		const int32 Row = Index / 2;
+		const int32 Column = Index % 2;
+		SpawnMember(GetActorLocation() + FVector((Row - 0.5f) * 140.0f, (Column - 0.5f) * 140.0f, 100.0f));
+	}
+}
+
+AStrategyUnit* AStrategySquad::SpawnMember(const FVector& Location)
+{
 	TSubclassOf<AStrategyUnit> UnitClass = Definition->UnitClass;
 	if (!UnitClass)
 	{
 		UnitClass = AStrategyUnit::StaticClass();
 	}
-	for (int32 Index = 0; Index < Definition->MemberCount; ++Index)
-	{
-		const int32 Row = Index / 2;
-		const int32 Column = Index % 2;
-		const FVector Offset((Row - 0.5f) * 140.0f, (Column - 0.5f) * 140.0f, 100.0f);
-		AStrategyUnit* Unit = GetWorld()->SpawnActor<AStrategyUnit>(UnitClass, GetActorLocation() + Offset, FRotator::ZeroRotator);
-		check(Unit);
-		Unit->Initialize(this, Faction, Definition);
-		Members.Add(Unit);
-	}
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	AStrategyUnit* Unit = GetWorld()->SpawnActor<AStrategyUnit>(UnitClass, Location, FRotator::ZeroRotator, SpawnParameters);
+	check(Unit);
+	Unit->Initialize(this, Faction, Definition);
+	Members.Add(Unit);
+	return Unit;
 }
 
 void AStrategySquad::IssueOrder(const FStrategyOrder& Order)
 {
+	RequestedGarrisonPoint = nullptr;
 	int32 Index = 0;
 	for (AStrategyUnit* Unit : Members)
 	{
@@ -101,15 +140,121 @@ void AStrategySquad::IssueOrder(const FStrategyOrder& Order)
 	}
 }
 
-void AStrategySquad::SetSelected(bool bSelected)
+void AStrategySquad::RequestGarrison(AStrategyControlPoint* Point)
 {
+	if (!Point || GarrisonPoint == Point)
+	{
+		return;
+	}
+	if (GarrisonPoint)
+	{
+		const FVector Direction = (Point->GetActorLocation() - GarrisonPoint->GetActorLocation()).GetSafeNormal2D();
+		ExitGarrison(GetActorLocation() + Direction * 760.0f);
+	}
+	FStrategyOrder Order;
+	Order.Type = EStrategyOrderType::Move;
+	Order.Destination = Point->GetActorLocation();
+	IssueOrder(Order);
+	RequestedGarrisonPoint = Point;
+}
+
+void AStrategySquad::SetSelected(bool bInSelected)
+{
+	bSelected = bInSelected;
 	for (AStrategyUnit* Unit : Members)
 	{
 		if (IsValid(Unit))
 		{
-			bSelected ? Unit->UnitSelected() : Unit->UnitDeselected();
+			bInSelected ? Unit->UnitSelected() : Unit->UnitDeselected();
 		}
 	}
+}
+
+void AStrategySquad::EnterGarrison(AStrategyControlPoint* Point)
+{
+	RequestedGarrisonPoint = nullptr;
+	GarrisonPoint = Point;
+	GarrisonElapsed = 0.0f;
+	ReinforcementElapsed = 0.0f;
+	SetActorLocation(Point->GetActorLocation());
+	for (AStrategyUnit* Unit : Members)
+	{
+		Unit->SetActorLocation(Point->GetActorLocation());
+		Unit->SetGarrisoned(true);
+	}
+}
+
+void AStrategySquad::ExitGarrison(const FVector& ExitLocation)
+{
+	AStrategyControlPoint* PreviousPoint = GarrisonPoint;
+	GarrisonPoint = nullptr;
+	if (PreviousPoint)
+	{
+		PreviousPoint->RemoveGarrisonedSquad(this);
+	}
+	GarrisonElapsed = 0.0f;
+	ReinforcementElapsed = 0.0f;
+	SetActorLocation(ExitLocation);
+	for (int32 Index = 0; Index < Members.Num(); ++Index)
+	{
+		AStrategyUnit* Unit = Members[Index];
+		const int32 Row = Index / 2;
+		const int32 Column = Index % 2;
+		Unit->SetActorLocation(ExitLocation + FVector((Row - 0.5f) * 140.0f, (Column - 0.5f) * 140.0f, 100.0f));
+		Unit->SetGarrisoned(false);
+		if (bSelected)
+		{
+			Unit->UnitSelected();
+		}
+	}
+}
+
+void AStrategySquad::ApplyGarrisonRecovery(float DeltaSeconds, float RecoveryDelay,
+	float RecoveryRate, float ReinforcementInterval)
+{
+	GarrisonElapsed += DeltaSeconds;
+	if (GarrisonElapsed < RecoveryDelay)
+	{
+		return;
+	}
+
+	float RemainingRecovery = FStrategyGarrisonRules::GetRecoveryAmount(InitialTotalHealth, RecoveryRate, DeltaSeconds);
+	TArray<AStrategyUnit*> SortedMembers;
+	for (AStrategyUnit* Unit : Members)
+	{
+		SortedMembers.Add(Unit);
+	}
+	SortedMembers.Sort([](const AStrategyUnit& Left, const AStrategyUnit& Right)
+	{
+		return Left.GetCurrentHealth() < Right.GetCurrentHealth();
+	});
+	for (AStrategyUnit* Unit : SortedMembers)
+	{
+		RemainingRecovery -= Unit->RestoreHealth(RemainingRecovery);
+		if (RemainingRecovery <= 0.0f)
+		{
+			break;
+		}
+	}
+
+	ReinforcementElapsed += DeltaSeconds;
+	if (FStrategyGarrisonRules::ShouldReinforce(Members.Num(), Definition->MemberCount,
+		ReinforcementElapsed, ReinforcementInterval))
+	{
+		RestoreOneMember();
+		ReinforcementElapsed -= ReinforcementInterval;
+	}
+}
+
+bool AStrategySquad::RestoreOneMember()
+{
+	if (!GarrisonPoint || Members.Num() >= Definition->MemberCount)
+	{
+		return false;
+	}
+	AStrategyUnit* Unit = SpawnMember(GarrisonPoint->GetActorLocation());
+	Unit->SetGarrisoned(true);
+	return true;
 }
 
 void AStrategySquad::NotifyMemberDied(AStrategyUnit* Member)
@@ -154,6 +299,10 @@ float AStrategySquad::GetHealthPercent() const
 
 FVector AStrategySquad::GetCenterLocation() const
 {
+	if (GarrisonPoint)
+	{
+		return GarrisonPoint->GetActorLocation();
+	}
 	FVector Total = FVector::ZeroVector;
 	int32 Count = 0;
 	for (const AStrategyUnit* Unit : Members)
@@ -165,6 +314,15 @@ FVector AStrategySquad::GetCenterLocation() const
 		}
 	}
 	return Count > 0 ? Total / Count : GetActorLocation();
+}
+
+FVector AStrategySquad::GetMarkerWorldLocation() const
+{
+	if (GarrisonPoint)
+	{
+		return GarrisonPoint->GetGarrisonMarkerWorldLocation(this);
+	}
+	return GetCenterLocation() + FVector(0.0f, 0.0f, 260.0f);
 }
 
 AStrategyBuilding::AStrategyBuilding()
@@ -187,6 +345,14 @@ AStrategyBuilding::AStrategyBuilding()
 void AStrategyBuilding::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (HitFlashRemaining > 0.0f)
+	{
+		HitFlashRemaining = FMath::Max(0.0f, HitFlashRemaining - DeltaSeconds);
+		if (HitFlashRemaining <= 0.0f)
+		{
+			Mesh->SetOverlayMaterial(bConstructionComplete ? nullptr : GetWorld()->GetGameState<AStrategyGameState>()->GetPresentationDefinition()->ConstructionMaterial);
+		}
+	}
 	if (!bConstructionComplete)
 	{
 		ConstructionElapsed += DeltaSeconds;
@@ -210,6 +376,10 @@ void AStrategyBuilding::Tick(float DeltaSeconds)
 	{
 		AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
 		State->SpawnSquad(Faction, CompletedType, GetActorLocation() + GetActorForwardVector() * 450.0f + FVector(0.0f, 0.0f, 100.0f), true);
+		PlayWorldFeedback(nullptr, State->GetPresentationDefinition()->TrainingCompleteSound);
+		const TCHAR* UnitName = CompletedType == EStrategyUnitType::Infantry ? TEXT("步兵")
+			: CompletedType == EStrategyUnitType::Archer ? TEXT("弓兵") : TEXT("骑兵");
+		State->NotifyFaction(Faction, FString::Printf(TEXT("训练完成：%s"), UnitName));
 	}
 }
 
@@ -227,7 +397,10 @@ void AStrategyBuilding::Initialize(EStrategyFaction InFaction, const UStrategyBu
 	Collision->SetBoxExtent(FVector(Definition->FootprintExtent.X, Definition->FootprintExtent.Y, 250.0f));
 	UpdateCollision();
 	UpdateAppearance();
-	GetWorld()->GetGameState<AStrategyGameState>()->RegisterBuilding(this);
+	AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	State->RegisterBuilding(this);
+	Mesh->SetOverlayMaterial(State->GetPresentationDefinition()->ConstructionMaterial);
+	PlayWorldFeedback(State->GetPresentationDefinition()->ConstructionEffect, State->GetPresentationDefinition()->ConstructionStartSound);
 }
 
 bool AStrategyBuilding::QueueUnit(EStrategyUnitType UnitType)
@@ -243,7 +416,8 @@ bool AStrategyBuilding::QueueUnit(EStrategyUnitType UnitType)
 	{
 		return false;
 	}
-	return TrainingQueue.Enqueue(UnitType, UnitDefinition->TrainingTime, UnitDefinition->PopulationCost);
+	return TrainingQueue.Enqueue(UnitType, UnitDefinition->TrainingTime
+		* State->GetTrainingTimeMultiplierAt(Faction, GetActorLocation()), UnitDefinition->PopulationCost);
 }
 
 void AStrategyBuilding::SetSelected(bool bSelected)
@@ -263,6 +437,11 @@ float AStrategyBuilding::GetHealthPercent() const
 	return Definition ? Health / Definition->MaxHealth : 0.0f;
 }
 
+float AStrategyBuilding::GetConstructionProgress() const
+{
+	return bConstructionComplete ? 1.0f : FMath::Clamp(ConstructionElapsed / Definition->ConstructionTime, 0.0f, 1.0f);
+}
+
 void AStrategyBuilding::ReceiveStrategyDamage(float Damage, EStrategyUnitType AttackerType, EStrategyFaction SourceFaction)
 {
 	if (SourceFaction == Faction || !IsStrategyAlive())
@@ -270,8 +449,13 @@ void AStrategyBuilding::ReceiveStrategyDamage(float Damage, EStrategyUnitType At
 		return;
 	}
 	Health -= Damage;
+	const UStrategyPresentationDataAsset* Presentation = GetWorld()->GetGameState<AStrategyGameState>()->GetPresentationDefinition();
+	Mesh->SetOverlayMaterial(Presentation->HitFlashMaterial);
+	HitFlashRemaining = 0.08f;
+	PlayWorldFeedback(Presentation->HitEffect, Definition->HitSound);
 	if (Health <= 0.0f)
 	{
+		PlayWorldFeedback(Presentation->DestructionEffect, Definition->DestroyedSound);
 		ApplyCleanup();
 		Destroy();
 	}
@@ -281,11 +465,13 @@ void AStrategyBuilding::CompleteConstruction()
 {
 	bConstructionComplete = true;
 	UpdateAppearanceScale(1.0f);
+	Mesh->SetOverlayMaterial(nullptr);
 	UpdateCollision();
-	if (Definition->PopulationBonus > 0)
-	{
-		GetWorld()->GetGameState<AStrategyGameState>()->AdjustPopulationCap(Faction, Definition->PopulationBonus);
-	}
+	AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	State->RecalculateFactionEconomy();
+	const UStrategyPresentationDataAsset* Presentation = State->GetPresentationDefinition();
+	PlayWorldFeedback(Presentation->ConstructionCompleteEffect, Presentation->ConstructionCompleteSound);
+	State->NotifyFaction(Faction, TEXT("建筑已完工"));
 }
 
 void AStrategyBuilding::UpdateCollision()
@@ -327,6 +513,15 @@ void AStrategyBuilding::UpdateTower(float DeltaSeconds)
 
 	if (BestTarget)
 	{
+		const UStrategyPresentationDataAsset* Presentation = State->GetPresentationDefinition();
+		if (FStrategyPresentationRules::CanPlayWorldFeedback(Faction,
+			State->IsVisibleToFaction(EStrategyFaction::Player, GetActorLocation())))
+		{
+			AStrategyProjectileVisual* Projectile = GetWorld()->SpawnActor<AStrategyProjectileVisual>();
+			Projectile->Initialize(Definition->ProjectileMesh, Presentation->ProjectileTrailEffect,
+				GetActorLocation() + FVector(0.0f, 0.0f, 350.0f), BestTarget->GetActorLocation() + FVector(0.0f, 0.0f, 50.0f), 0.3f);
+			UGameplayStatics::PlaySoundAtLocation(this, Definition->AttackSound, GetActorLocation());
+		}
 		BestTarget->ReceiveStrategyDamage(25.0f, EStrategyUnitType::Archer, Faction);
 		AttackCooldown = 1.2f;
 	}
@@ -341,10 +536,6 @@ void AStrategyBuilding::ApplyCleanup()
 	bCleanupApplied = true;
 	if (AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>())
 	{
-		if (bConstructionComplete && Definition && Definition->PopulationBonus > 0)
-		{
-			State->AdjustPopulationCap(Faction, -Definition->PopulationBonus);
-		}
 		State->ReleaseReservedPopulation(Faction, TrainingQueue.GetReservedPopulation());
 		State->UnregisterBuilding(this);
 	}
@@ -352,58 +543,37 @@ void AStrategyBuilding::ApplyCleanup()
 
 void AStrategyBuilding::UpdateAppearance()
 {
-	const TCHAR* MeshPath = GetBuildingType() == EStrategyBuildingType::Tower
-		? TEXT("/Engine/BasicShapes/Cylinder.Cylinder")
-		: TEXT("/Engine/BasicShapes/Cube.Cube");
-	UStaticMesh* BuildingMesh = Definition->VisualMesh.Get();
-	if (!BuildingMesh)
-	{
-		BuildingMesh = LoadObject<UStaticMesh>(nullptr, MeshPath);
-	}
-	Mesh->SetStaticMesh(BuildingMesh);
-	GateLeftPost->SetStaticMesh(BuildingMesh);
-	GateRightPost->SetStaticMesh(BuildingMesh);
-
-	const bool bGate = GetBuildingType() == EStrategyBuildingType::Gate;
-	GateLeftPost->SetVisibility(bGate);
-	GateRightPost->SetVisibility(bGate);
+	Mesh->SetStaticMesh(Definition->VisualMesh);
+	GateLeftPost->SetVisibility(false);
+	GateRightPost->SetVisibility(false);
 	UpdateAppearanceScale(1.0f);
-	if (Definition->VisualMaterial)
-	{
-		UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(Definition->VisualMaterial, this);
-		Material->SetVectorParameterValue(TEXT("Color"), StrategyArtStyle::GetBuildingColor(GetBuildingType(), Faction));
-		Mesh->SetMaterial(0, Material);
-		GateLeftPost->SetMaterial(0, Material);
-		GateRightPost->SetMaterial(0, Material);
-	}
-	else
-	{
-		StrategyVisuals::ApplyFactionMaterial(Mesh, Faction);
-		StrategyVisuals::ApplyFactionMaterial(GateLeftPost, Faction);
-		StrategyVisuals::ApplyFactionMaterial(GateRightPost, Faction);
-	}
+	StrategyVisuals::ApplyFactionMaterial(Mesh, Definition->FactionMaterialSlot, Faction,
+		GetWorld()->GetGameState<AStrategyGameState>()->GetPresentationDefinition());
 }
 
 void AStrategyBuilding::UpdateAppearanceScale(float HeightAlpha)
 {
-	if (GetBuildingType() == EStrategyBuildingType::Gate)
+	const FVector FinalScale = Definition->VisualScale;
+	Mesh->SetRelativeScale3D(FVector(FinalScale.X, FinalScale.Y, FinalScale.Z * HeightAlpha));
+	Mesh->SetRelativeLocation(FVector::ZeroVector);
+}
+
+void AStrategyBuilding::PlayWorldFeedback(UNiagaraSystem* Effect, USoundBase* Sound) const
+{
+	AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	if (!FStrategyPresentationRules::CanPlayWorldFeedback(Faction,
+		State->IsVisibleToFaction(EStrategyFaction::Player, GetActorLocation())))
 	{
-		const FVector GateScale = Definition->VisualScale;
-		Mesh->SetRelativeScale3D(FVector(GateScale.X, GateScale.Y, 0.8f * HeightAlpha));
-		Mesh->SetRelativeLocation(FVector(0.0f, 0.0f, 260.0f * HeightAlpha));
-		GateLeftPost->SetRelativeScale3D(FVector(0.8f, GateScale.Y, 2.2f * HeightAlpha));
-		GateLeftPost->SetRelativeLocation(FVector(-160.0f, 0.0f, 110.0f * HeightAlpha));
-		GateRightPost->SetRelativeScale3D(FVector(0.8f, GateScale.Y, 2.2f * HeightAlpha));
-		GateRightPost->SetRelativeLocation(FVector(160.0f, 0.0f, 110.0f * HeightAlpha));
 		return;
 	}
-
-	const bool bWall = GetBuildingType() == EStrategyBuildingType::Wall;
-	const FVector FinalScale = bWall
-		? Definition->VisualScale
-		: StrategyArtStyle::GetBuildingSilhouetteScale(GetBuildingType()) * Definition->VisualScale;
-	Mesh->SetRelativeScale3D(FVector(FinalScale.X, FinalScale.Y, FinalScale.Z * HeightAlpha));
-	Mesh->SetRelativeLocation(FVector(0.0f, 0.0f, FinalScale.Z * 50.0f * HeightAlpha));
+	if (Effect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, Effect, GetActorLocation());
+	}
+	if (Sound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, Sound, GetActorLocation());
+	}
 }
 
 AStrategyControlPoint::AStrategyControlPoint()
@@ -414,6 +584,14 @@ AStrategyControlPoint::AStrategyControlPoint()
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
 	Mesh->SetupAttachment(RootComponent);
 	Mesh->SetCollisionProfileName(TEXT("BlockAllDynamic"));
+	FlagMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Flag Mesh"));
+	FlagMesh->SetupAttachment(RootComponent);
+	FlagMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CaptureRing = CreateDefaultSubobject<UDecalComponent>(TEXT("Capture Ring"));
+	CaptureRing->SetupAttachment(RootComponent);
+	CaptureRing->SetRelativeLocation(FVector(0.0f, 0.0f, 12.0f));
+	CaptureRing->SetRelativeRotation(FRotator(-90.0f, 0.0f, 0.0f));
+	CaptureRing->DecalSize = FVector(120.0f, 650.0f, 650.0f);
 	CaptureArea = CreateDefaultSubobject<USphereComponent>(TEXT("CaptureArea"));
 	CaptureArea->SetupAttachment(RootComponent);
 	CaptureArea->SetSphereRadius(650.0f);
@@ -423,29 +601,257 @@ AStrategyControlPoint::AStrategyControlPoint()
 void AStrategyControlPoint::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	if (bCapital)
-	{
-		return;
-	}
-
+	AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	UpdateGarrison(DeltaSeconds);
 	bool bPlayerPresent = false;
 	bool bEnemyPresent = false;
-	for (const AStrategySquad* Squad : GetWorld()->GetGameState<AStrategyGameState>()->GetSquads())
+	FVector NearestEnemyLocation = GetActorLocation();
+	float NearestEnemyDistanceSquared = TNumericLimits<float>::Max();
+	for (const AStrategySquad* Squad : State->GetSquads())
 	{
-		if (!IsValid(Squad) || FVector::DistSquared2D(GetActorLocation(), Squad->GetCenterLocation()) > FMath::Square(650.0f))
+		if (!IsValid(Squad) || Squad->IsGarrisoned())
+		{
+			continue;
+		}
+		const float DistanceSquared = FVector::DistSquared2D(GetActorLocation(), Squad->GetCenterLocation());
+		if (DistanceSquared > FMath::Square(FStrategyGarrisonRules::ExitDistance))
 		{
 			continue;
 		}
 		bPlayerPresent |= Squad->GetFaction() == EStrategyFaction::Player;
 		bEnemyPresent |= Squad->GetFaction() == EStrategyFaction::Enemy;
+		if (Squad->GetFaction() != CaptureState.Owner && Squad->GetFaction() != EStrategyFaction::Neutral
+			&& DistanceSquared < NearestEnemyDistanceSquared)
+		{
+			NearestEnemyDistanceSquared = DistanceSquared;
+			NearestEnemyLocation = Squad->GetCenterLocation();
+		}
+	}
+
+	const bool bEnemyToOwnerPresent = CaptureState.Owner == EStrategyFaction::Player
+		? bEnemyPresent : CaptureState.Owner == EStrategyFaction::Enemy && bPlayerPresent;
+	const bool bOwnerPresentBeforeSortie = CaptureState.Owner == EStrategyFaction::Player
+		? bPlayerPresent : CaptureState.Owner == EStrategyFaction::Enemy && bEnemyPresent;
+	const bool bSortieTriggered = FStrategyGarrisonRules::ShouldSortie(CaptureState.Owner,
+		bEnemyToOwnerPresent, bOwnerPresentBeforeSortie, GarrisonedSquads.Num());
+	if (bSortieTriggered)
+	{
+		SortieGarrison(NearestEnemyLocation);
+		bPlayerPresent |= CaptureState.Owner == EStrategyFaction::Player;
+		bEnemyPresent |= CaptureState.Owner == EStrategyFaction::Enemy;
+	}
+	if (bCapital)
+	{
+		return;
 	}
 
 	const EStrategyFaction OldOwner = CaptureState.Owner;
-	CaptureState.Update(DeltaSeconds, bPlayerPresent, bEnemyPresent);
+	const bool bContested = (bPlayerPresent && bEnemyPresent) || bSortieTriggered;
+	CaptureState.Update(DeltaSeconds, bPlayerPresent, bEnemyPresent, GetRequiredCaptureDuration());
+	CaptureRingMaterial->SetScalarParameterValue(TEXT("Progress"), GetCaptureProgress());
+	CaptureRingMaterial->SetScalarParameterValue(TEXT("Contested"), bContested ? 1.0f : 0.0f);
+	const UStrategyPresentationDataAsset* Presentation = State->GetPresentationDefinition();
+	if (bContested && !bWasContested && FStrategyPresentationRules::CanPlayWorldFeedback(
+		CaptureState.Owner, State->IsVisibleToFaction(EStrategyFaction::Player, GetActorLocation())))
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, Presentation->CaptureContestedSound, GetActorLocation());
+	}
+	bWasContested = bContested;
+	PreviousChallenger = CaptureState.Challenger;
 	if (OldOwner != CaptureState.Owner)
 	{
-		GetWorld()->GetGameState<AStrategyGameState>()->ChangeControlPointOwner(this, OldOwner, CaptureState.Owner);
+		FStrategyTownDevelopmentRules::HandleOwnershipChanged(TownDevelopment);
+		State->ChangeControlPointOwner(this, OldOwner, CaptureState.Owner);
 		UpdateAppearance();
+		if (FStrategyPresentationRules::CanPlayWorldFeedback(CaptureState.Owner,
+			State->IsVisibleToFaction(EStrategyFaction::Player, GetActorLocation())))
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, Presentation->CaptureEffect, GetActorLocation());
+			UGameplayStatics::PlaySoundAtLocation(this, Presentation->CaptureCompleteSound, GetActorLocation());
+		}
+	}
+
+	const bool bOwnerSquadPresent = CaptureState.Owner == EStrategyFaction::Player ? bPlayerPresent : bEnemyPresent;
+	const EStrategyTownUpdateResult DevelopmentResult = FStrategyTownDevelopmentRules::Update(
+		TownDevelopment, DeltaSeconds, bContested, bOwnerSquadPresent);
+	if (DevelopmentResult == EStrategyTownUpdateResult::DowngradeCompleted)
+	{
+		State->GetMutableFactionState(CaptureState.Owner).Gold += FStrategyTownDevelopmentRules::GetDowngradeRefund();
+	}
+	if (DevelopmentResult != EStrategyTownUpdateResult::None)
+	{
+		State->NotifyTownDevelopmentChanged(this);
+		const FString Message = DevelopmentResult == EStrategyTownUpdateResult::BuildCompleted
+			? TEXT("城镇专精建设完成")
+			: DevelopmentResult == EStrategyTownUpdateResult::DowngradeCompleted
+				? TEXT("城镇降级完成，返还 100 金币") : TEXT("城镇已重新启用");
+		State->NotifyFaction(CaptureState.Owner, Message);
+	}
+	UpdateFortress(DeltaSeconds);
+}
+
+bool AStrategyControlPoint::TryGarrisonSquad(AStrategySquad* Squad)
+{
+	if (!Squad || !FStrategyGarrisonRules::CanEnter(Squad->GetFaction(), CaptureState.Owner,
+		Squad->IsAlive(), Squad->IsGarrisoned(), GarrisonedSquads.Num(), GetGarrisonCapacity())
+		|| FVector::DistSquared2D(GetActorLocation(), Squad->GetCenterLocation())
+			> FMath::Square(FStrategyGarrisonRules::ExitDistance))
+	{
+		return false;
+	}
+	GarrisonedSquads.Add(Squad);
+	Squad->EnterGarrison(this);
+	return true;
+}
+
+void AStrategyControlPoint::RemoveGarrisonedSquad(AStrategySquad* Squad)
+{
+	GarrisonedSquads.Remove(Squad);
+}
+
+int32 AStrategyControlPoint::GetGarrisonCapacity() const
+{
+	return FStrategyGarrisonRules::GetCapacity(bCapital, TownDevelopment.Specialization, TownDevelopment.State);
+}
+
+FVector AStrategyControlPoint::GetGarrisonMarkerWorldLocation(const AStrategySquad* Squad) const
+{
+	const int32 Index = FMath::Max(0, GarrisonedSquads.IndexOfByKey(Squad));
+	const float Offset = (Index - (GarrisonedSquads.Num() - 1) * 0.5f) * 180.0f;
+	return GetActorLocation() + FVector(0.0f, Offset, bCapital ? 650.0f : 480.0f);
+}
+
+void AStrategyControlPoint::SortieGarrison(const FVector& EnemyLocation)
+{
+	const FVector Direction = (EnemyLocation - GetActorLocation()).GetSafeNormal2D().IsNearlyZero()
+		? FVector::ForwardVector : (EnemyLocation - GetActorLocation()).GetSafeNormal2D();
+	const FVector Side = FVector(-Direction.Y, Direction.X, 0.0f);
+	const TArray<TObjectPtr<AStrategySquad>> SquadsToSortie = GarrisonedSquads;
+	GarrisonedSquads.Reset();
+	for (int32 Index = 0; Index < SquadsToSortie.Num(); ++Index)
+	{
+		AStrategySquad* Squad = SquadsToSortie[Index];
+		if (!IsValid(Squad))
+		{
+			continue;
+		}
+		const FVector ExitLocation = GetActorLocation() + Direction * 760.0f
+			+ Side * ((Index - (SquadsToSortie.Num() - 1) * 0.5f) * 260.0f);
+		Squad->ExitGarrison(ExitLocation);
+		FStrategyOrder Order;
+		Order.Type = EStrategyOrderType::AttackMove;
+		Order.Destination = EnemyLocation;
+		Squad->IssueOrder(Order);
+	}
+}
+
+void AStrategyControlPoint::UpdateGarrison(float DeltaSeconds)
+{
+	GarrisonedSquads.RemoveAll([](const AStrategySquad* Squad)
+	{
+		return !IsValid(Squad) || !Squad->IsAlive();
+	});
+	const float Delay = FStrategyGarrisonRules::GetRecoveryDelay(TownDevelopment.Specialization, TownDevelopment.State);
+	const float Rate = FStrategyGarrisonRules::GetRecoveryRate(TownDevelopment.Specialization, TownDevelopment.State);
+	const float Interval = FStrategyGarrisonRules::GetReinforcementInterval(TownDevelopment.Specialization, TownDevelopment.State);
+	for (AStrategySquad* Squad : GarrisonedSquads)
+	{
+		Squad->ApplyGarrisonRecovery(DeltaSeconds, Delay, Rate, Interval);
+	}
+}
+
+bool AStrategyControlPoint::StartSpecialization(EStrategyTownSpecialization Specialization)
+{
+	if (!FStrategyTownDevelopmentRules::CanStartSpecialization(TownDevelopment, Specialization,
+		FStrategyTownDevelopmentRules::SpecializationCost))
+	{
+		return false;
+	}
+	FStrategyTownDevelopmentRules::StartSpecialization(TownDevelopment, Specialization);
+	GetWorld()->GetGameState<AStrategyGameState>()->NotifyTownDevelopmentChanged(this);
+	return true;
+}
+
+bool AStrategyControlPoint::StartDowngrade()
+{
+	if (!FStrategyTownDevelopmentRules::CanStartDowngrade(TownDevelopment))
+	{
+		return false;
+	}
+	FStrategyTownDevelopmentRules::StartDowngrade(TownDevelopment);
+	GetWorld()->GetGameState<AStrategyGameState>()->NotifyTownDevelopmentChanged(this);
+	return true;
+}
+
+float AStrategyControlPoint::GetDevelopmentProgress() const
+{
+	if (TownDevelopment.State == EStrategyTownDevelopmentState::Building)
+	{
+		return TownDevelopment.ProgressSeconds / FStrategyTownDevelopmentRules::BuildDuration;
+	}
+	if (TownDevelopment.State == EStrategyTownDevelopmentState::Downgrading)
+	{
+		return TownDevelopment.ProgressSeconds / FStrategyTownDevelopmentRules::DowngradeDuration;
+	}
+	if (TownDevelopment.State == EStrategyTownDevelopmentState::DisabledAfterCapture)
+	{
+		return TownDevelopment.ProgressSeconds / FStrategyTownDevelopmentRules::ReactivationDuration;
+	}
+	return TownDevelopment.State == EStrategyTownDevelopmentState::Active ? 1.0f : 0.0f;
+}
+
+float AStrategyControlPoint::GetRequiredCaptureDuration() const
+{
+	return FStrategyTownSpecializationRules::GetCaptureDuration(TownDevelopment.Specialization, TownDevelopment.State);
+}
+
+void AStrategyControlPoint::UpdateFortress(float DeltaSeconds)
+{
+	AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	const bool bConnected = State->IsTownSupplyConnected(this);
+	const float AttackRange = FStrategyTownSpecializationRules::GetFortressRange(
+		TownDevelopment.Specialization, TownDevelopment.State, bConnected);
+	if (AttackRange <= 0.0f)
+	{
+		return;
+	}
+
+	FortressAttackCooldown -= DeltaSeconds;
+	if (FortressAttackCooldown > 0.0f)
+	{
+		return;
+	}
+
+	AStrategyUnit* BestTarget = nullptr;
+	float BestDistance = AttackRange;
+	for (TActorIterator<AStrategyUnit> It(GetWorld()); It; ++It)
+	{
+		AStrategyUnit* Unit = *It;
+		const float Distance = FVector::Dist2D(GetActorLocation(), Unit->GetActorLocation());
+		if (FStrategyTowerTargetRules::CanTarget(CaptureState.Owner, Unit->GetStrategyFaction(), true,
+			Unit->IsStrategyAlive(), State->IsVisibleToFaction(CaptureState.Owner, Unit->GetActorLocation()),
+			Distance, BestDistance))
+		{
+			BestDistance = Distance;
+			BestTarget = Unit;
+		}
+	}
+
+	if (BestTarget)
+	{
+		const UStrategyBuildingDataAsset* TowerDefinition = State->GetBuildingDefinition(EStrategyBuildingType::Tower);
+		const UStrategyPresentationDataAsset* Presentation = State->GetPresentationDefinition();
+		if (FStrategyPresentationRules::CanPlayWorldFeedback(CaptureState.Owner,
+			State->IsVisibleToFaction(EStrategyFaction::Player, GetActorLocation())))
+		{
+			AStrategyProjectileVisual* Projectile = GetWorld()->SpawnActor<AStrategyProjectileVisual>();
+			Projectile->Initialize(TowerDefinition->ProjectileMesh, Presentation->ProjectileTrailEffect,
+				GetActorLocation() + FVector(0.0f, 0.0f, 350.0f), BestTarget->GetActorLocation() + FVector(0.0f, 0.0f, 50.0f), 0.3f);
+			UGameplayStatics::PlaySoundAtLocation(this, TowerDefinition->AttackSound, GetActorLocation());
+		}
+		BestTarget->ReceiveStrategyDamage(FStrategyTownSpecializationRules::GetFortressDamage(
+			TownDevelopment.Specialization, TownDevelopment.State, bConnected), EStrategyUnitType::Archer, CaptureState.Owner);
+		FortressAttackCooldown = 1.2f;
 	}
 }
 
@@ -457,9 +863,15 @@ void AStrategyControlPoint::Initialize(EStrategyFaction InFaction, bool bInCapit
 	IncomePerSecond = bCapital ? 5.0f : 3.0f;
 	PopulationBonus = bCapital ? 20 : 5;
 	Health = bCapital ? 3000.0f : 1.0f;
-	Mesh->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, bCapital ? TEXT("/Engine/BasicShapes/Cube.Cube") : TEXT("/Engine/BasicShapes/Cylinder.Cylinder")));
-	Mesh->SetRelativeScale3D(bCapital ? FVector(5.0f, 5.0f, 5.0f) : FVector(3.0f, 3.0f, 0.6f));
-	Mesh->SetRelativeLocation(FVector(0.0f, 0.0f, bCapital ? 250.0f : 30.0f));
+	const UStrategyPresentationDataAsset* Presentation = GetWorld()->GetGameState<AStrategyGameState>()->GetPresentationDefinition();
+	Mesh->SetStaticMesh(bCapital ? Presentation->CapitalMesh : Presentation->TownMesh);
+	Mesh->SetRelativeScale3D(FVector::OneVector);
+	Mesh->SetRelativeLocation(FVector::ZeroVector);
+	FlagMesh->SetStaticMesh(Presentation->FlagMesh);
+	FlagMesh->SetRelativeLocation(FVector(0.0f, 0.0f, bCapital ? 520.0f : 360.0f));
+	CaptureRing->SetHiddenInGame(bCapital);
+	CaptureRingMaterial = UMaterialInstanceDynamic::Create(Presentation->CaptureRingMaterial, this);
+	CaptureRing->SetDecalMaterial(CaptureRingMaterial);
 	UpdateAppearance();
 	GetWorld()->GetGameState<AStrategyGameState>()->RegisterControlPoint(this);
 }
@@ -480,7 +892,10 @@ void AStrategyControlPoint::ReceiveStrategyDamage(float Damage, EStrategyUnitTyp
 
 void AStrategyControlPoint::UpdateAppearance()
 {
-	StrategyVisuals::ApplyFactionMaterial(Mesh, CaptureState.Owner);
+	const UStrategyPresentationDataAsset* Presentation = GetWorld()->GetGameState<AStrategyGameState>()->GetPresentationDefinition();
+	StrategyVisuals::ApplyFactionMaterial(Mesh, NAME_None, CaptureState.Owner, Presentation);
+	StrategyVisuals::ApplyFactionMaterial(FlagMesh, NAME_None, CaptureState.Owner, Presentation);
+	CaptureRingMaterial->SetVectorParameterValue(TEXT("FactionColor"), StrategyArtStyle::GetFactionColor(CaptureState.Owner));
 }
 
 AStrategyFogOfWar::AStrategyFogOfWar()
@@ -497,17 +912,20 @@ AStrategyFogOfWar::AStrategyFogOfWar()
 void AStrategyFogOfWar::BeginPlay()
 {
 	Super::BeginPlay();
-	PlayerGrid.Initialize(128, 96, FVector2D(-11000.0f, -9000.0f), FVector2D(11000.0f, 9000.0f));
-	EnemyGrid.Initialize(128, 96, FVector2D(-11000.0f, -9000.0f), FVector2D(11000.0f, 9000.0f));
+	const FStrategySkirmishMapDefinition MapDefinition = FStrategyMapDefinitions::Resolve(GetWorld()->GetMapName());
+	PlayerGrid.Initialize(MapDefinition.FogGridSize.X, MapDefinition.FogGridSize.Y, MapDefinition.FogMin, MapDefinition.FogMax);
+	EnemyGrid.Initialize(MapDefinition.FogGridSize.X, MapDefinition.FogGridSize.Y, MapDefinition.FogMin, MapDefinition.FogMax);
 	GetWorld()->GetGameState<AStrategyGameState>()->SetFogOfWar(this);
 
-	FogTexture = UTexture2D::CreateTransient(128, 96, PF_B8G8R8A8);
+	FogTexture = UTexture2D::CreateTransient(MapDefinition.FogGridSize.X, MapDefinition.FogGridSize.Y, PF_B8G8R8A8);
 	FogTexture->SRGB = false;
 	FogTexture->Filter = TF_Bilinear;
 	FogTexture->UpdateResource();
 	FogPlane->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane")));
-	FogPlane->SetRelativeScale3D(FVector(220.0f, 180.0f, 1.0f));
-	FogPlane->SetRelativeLocation(FVector(0.0f, 0.0f, 1200.0f));
+	const FVector2D FogSize = MapDefinition.FogMax - MapDefinition.FogMin;
+	const FVector2D FogCenter = (MapDefinition.FogMin + MapDefinition.FogMax) * 0.5f;
+	FogPlane->SetRelativeScale3D(FVector(FogSize.X / 100.0f, FogSize.Y / 100.0f, 1.0f));
+	FogPlane->SetRelativeLocation(FVector(FogCenter.X, FogCenter.Y, 1200.0f));
 	UMaterialInterface* Material = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/CityStateRTS/Materials/M_Fog.M_Fog"));
 	check(Material);
 	FogMaterial = UMaterialInstanceDynamic::Create(Material, this);
@@ -531,6 +949,12 @@ bool AStrategyFogOfWar::IsVisibleToFaction(EStrategyFaction Faction, const FVect
 {
 	const FVector2D Point(Location.X, Location.Y);
 	return Faction == EStrategyFaction::Player ? PlayerGrid.IsVisible(Point) : EnemyGrid.IsVisible(Point);
+}
+
+bool AStrategyFogOfWar::IsExploredToFaction(EStrategyFaction Faction, const FVector& Location) const
+{
+	const FVector2D Point(Location.X, Location.Y);
+	return Faction == EStrategyFaction::Player ? PlayerGrid.IsExplored(Point) : EnemyGrid.IsExplored(Point);
 }
 
 void AStrategyFogOfWar::UpdateFog()
@@ -650,23 +1074,125 @@ void AStrategyAICommander::RunDecision()
 	{
 		return;
 	}
+	const FStrategyFactionState& FactionState = State->GetFactionState(EStrategyFaction::Enemy);
+	if (++DecisionsSinceStatus >= 30)
+	{
+		DecisionsSinceStatus = 0;
+		UE_LOG(LogTemp, Display, TEXT("StrategyAI Status Gold=%.0f Income=%.1f OwnedPoints=%d"),
+			FactionState.Gold, FactionState.IncomePerSecond, FactionState.OwnedPoints);
+	}
+
+	if (AStrategyControlPoint* ThreatenedPoint = FindThreatenedPoint())
+	{
+		FStrategyOrder Order;
+		Order.Type = EStrategyOrderType::AttackMove;
+		Order.Destination = ThreatenedPoint->GetActorLocation();
+		IssueAllSquads(Order);
+		return;
+	}
+
+	UpdateGarrisonBehavior();
+
+	FStrategyTownAIInputs TownInputs;
+	AStrategyControlPoint* DisabledTown = nullptr;
+	AStrategyControlPoint* UnspecializedTown = nullptr;
+	bool bTownProjectActive = false;
+	for (AStrategyControlPoint* Point : State->GetControlPoints())
+	{
+		if (!IsValid(Point) || Point->IsCapital() || Point->GetStrategyFaction() != EStrategyFaction::Enemy)
+		{
+			continue;
+		}
+
+		const FStrategyTownDevelopment& Development = Point->GetTownDevelopment();
+		const bool bPreservedOrActive = Development.State == EStrategyTownDevelopmentState::Active
+			|| Development.State == EStrategyTownDevelopmentState::DisabledAfterCapture;
+		TownInputs.bHasTradeTown |= bPreservedOrActive
+			&& Development.Specialization == EStrategyTownSpecialization::Trade;
+		TownInputs.bHasRecruitmentTown |= bPreservedOrActive
+			&& Development.Specialization == EStrategyTownSpecialization::Recruitment;
+		bTownProjectActive |= Development.State == EStrategyTownDevelopmentState::Building
+			|| Development.State == EStrategyTownDevelopmentState::Downgrading;
+		if (Development.State == EStrategyTownDevelopmentState::DisabledAfterCapture)
+		{
+			InheritedTowns.Add(Point);
+			DisabledTown = DisabledTown ? DisabledTown : Point;
+		}
+		else if (Development.State == EStrategyTownDevelopmentState::Unspecialized)
+		{
+			UnspecializedTown = UnspecializedTown ? UnspecializedTown : Point;
+		}
+	}
+
+	if (DisabledTown)
+	{
+		FStrategyOrder Order;
+		Order.Type = EStrategyOrderType::AttackMove;
+		Order.Destination = DisabledTown->GetActorLocation();
+		IssueAllSquads(Order, 1);
+		return;
+	}
+
+	if (!bTownProjectActive && UnspecializedTown
+		&& FactionState.Gold >= FStrategyTownDevelopmentRules::SpecializationCost)
+	{
+		TownInputs.bTownThreatened = IsTownThreatened(UnspecializedTown);
+		const EStrategyTownSpecialization Specialization = FStrategyTownAIPlanner::ChooseSpecialization(TownInputs);
+		if (State->TryStartTownSpecialization(EStrategyFaction::Enemy, UnspecializedTown, Specialization))
+		{
+			UE_LOG(LogTemp, Display, TEXT("StrategyAI TownSpecialization Choice=%d"),
+				static_cast<int32>(Specialization));
+			return;
+		}
+	}
+
+	if (!bTownProjectActive && FactionState.Gold >= 500.0f)
+	{
+		for (auto TownIterator = InheritedTowns.CreateIterator(); TownIterator; ++TownIterator)
+		{
+			AStrategyControlPoint* Town = TownIterator->Get();
+			if (!Town || Town->GetStrategyFaction() != EStrategyFaction::Enemy
+				|| Town->GetTownDevelopment().State != EStrategyTownDevelopmentState::Active)
+			{
+				continue;
+			}
+
+			TownInputs.bTownThreatened = IsTownThreatened(Town);
+			const EStrategyTownSpecialization Preferred = FStrategyTownAIPlanner::ChooseSpecialization(TownInputs);
+			if (FStrategyTownAIPlanner::ShouldRespecialize(
+				Town->GetTownDevelopment().Specialization, Preferred, FactionState.Gold)
+				&& State->TryStartTownDowngrade(EStrategyFaction::Enemy, Town))
+			{
+				UE_LOG(LogTemp, Display, TEXT("StrategyAI TownDowngrade Current=%d Preferred=%d"),
+					static_cast<int32>(Town->GetTownDevelopment().Specialization), static_cast<int32>(Preferred));
+				TownIterator.RemoveCurrent();
+				return;
+			}
+		}
+	}
 
 	FStrategyAIInputs Inputs;
-	Inputs.bOwnedPointThreatened = FindThreatenedPoint() != nullptr;
+	Inputs.bOwnedPointThreatened = false;
 	Inputs.bNeutralPointAvailable = FindNeutralPoint() != nullptr;
 	Inputs.bMissingProductionBuilding = FindMissingProductionBuilding() != EStrategyBuildingType::Capital;
 	for (const AStrategySquad* Squad : State->GetSquads())
 	{
-		Inputs.AvailableSquads += IsValid(Squad) && Squad->GetFaction() == EStrategyFaction::Enemy;
+		Inputs.AvailableSquads += IsValid(Squad) && Squad->GetFaction() == EStrategyFaction::Enemy
+			&& !Squad->IsGarrisoned() && !Squad->IsGarrisonRequested();
 	}
 
-	const FStrategyFactionState& FactionState = State->GetFactionState(EStrategyFaction::Enemy);
 	if (FactionState.PopulationCap - FactionState.UsedPopulation - FactionState.ReservedPopulation < 8)
 	{
 		TryBuild(EStrategyBuildingType::House);
 	}
 
-	switch (FStrategyAIPlanner::ChooseAction(Inputs))
+	const EStrategyAIAction Action = FStrategyAIPlanner::ChooseAction(Inputs);
+	if (Action != LastLoggedAction)
+	{
+		LastLoggedAction = Action;
+		UE_LOG(LogTemp, Display, TEXT("StrategyAI Action=%d"), static_cast<int32>(Action));
+	}
+	switch (Action)
 	{
 	case EStrategyAIAction::Defend:
 	{
@@ -723,15 +1249,28 @@ AStrategyControlPoint* AStrategyAICommander::FindThreatenedPoint() const
 		{
 			continue;
 		}
-		for (AStrategySquad* Squad : State->GetSquads())
+		if (IsTownThreatened(Point))
 		{
-			if (IsValid(Squad) && Squad->GetFaction() == EStrategyFaction::Player && State->IsVisibleToFaction(EStrategyFaction::Enemy, Squad->GetCenterLocation()) && FVector::DistSquared2D(Point->GetActorLocation(), Squad->GetCenterLocation()) < FMath::Square(2200.0f))
-			{
-				return Point;
-			}
+			return Point;
 		}
 	}
 	return nullptr;
+}
+
+bool AStrategyAICommander::IsTownThreatened(const AStrategyControlPoint* Point) const
+{
+	AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	for (AStrategySquad* Squad : State->GetSquads())
+	{
+		if (IsValid(Squad) && Squad->GetFaction() == EStrategyFaction::Player
+			&& !Squad->IsGarrisoned()
+			&& State->IsVisibleToFaction(EStrategyFaction::Enemy, Squad->GetCenterLocation())
+			&& FVector::DistSquared2D(Point->GetActorLocation(), Squad->GetCenterLocation()) < FMath::Square(2200.0f))
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 AStrategyControlPoint* AStrategyAICommander::FindNeutralPoint() const
@@ -778,6 +1317,7 @@ bool AStrategyAICommander::TryBuild(EStrategyBuildingType BuildingType)
 		const FVector Location = GetNextBuildLocation();
 		if (State->TryPlaceBuilding(EStrategyFaction::Enemy, BuildingType, Location))
 		{
+			UE_LOG(LogTemp, Display, TEXT("StrategyAI Build Type=%d"), static_cast<int32>(BuildingType));
 			return true;
 		}
 	}
@@ -790,7 +1330,8 @@ void AStrategyAICommander::TrainCounterUnit()
 	EStrategyUnitType DesiredType = EStrategyUnitType::Infantry;
 	for (const AStrategySquad* Squad : State->GetSquads())
 	{
-		if (IsValid(Squad) && Squad->GetFaction() == EStrategyFaction::Player && State->IsVisibleToFaction(EStrategyFaction::Enemy, Squad->GetCenterLocation()))
+		if (IsValid(Squad) && Squad->GetFaction() == EStrategyFaction::Player && !Squad->IsGarrisoned()
+			&& State->IsVisibleToFaction(EStrategyFaction::Enemy, Squad->GetCenterLocation()))
 		{
 			DesiredType = Squad->GetUnitType() == EStrategyUnitType::Infantry ? EStrategyUnitType::Archer : Squad->GetUnitType() == EStrategyUnitType::Archer ? EStrategyUnitType::Cavalry : EStrategyUnitType::Infantry;
 			break;
@@ -801,6 +1342,7 @@ void AStrategyAICommander::TrainCounterUnit()
 	{
 		if (IsValid(Building) && Building->GetStrategyFaction() == EStrategyFaction::Enemy && Building->QueueUnit(DesiredType))
 		{
+			UE_LOG(LogTemp, Display, TEXT("StrategyAI Train Type=%d"), static_cast<int32>(DesiredType));
 			return;
 		}
 	}
@@ -814,6 +1356,7 @@ void AStrategyAICommander::TrainCounterUnit()
 		{
 			if (Building->QueueUnit(Type))
 			{
+				UE_LOG(LogTemp, Display, TEXT("StrategyAI Train Type=%d"), static_cast<int32>(Type));
 				return;
 			}
 		}
@@ -825,7 +1368,8 @@ void AStrategyAICommander::IssueAllSquads(const FStrategyOrder& Order, int32 Max
 	int32 Issued = 0;
 	for (AStrategySquad* Squad : GetWorld()->GetGameState<AStrategyGameState>()->GetSquads())
 	{
-		if (IsValid(Squad) && Squad->GetFaction() == EStrategyFaction::Enemy)
+		if (IsValid(Squad) && Squad->GetFaction() == EStrategyFaction::Enemy
+			&& !Squad->IsGarrisoned() && !Squad->IsGarrisonRequested())
 		{
 			Squad->IssueOrder(Order);
 			if (++Issued >= MaximumSquads)
@@ -834,6 +1378,79 @@ void AStrategyAICommander::IssueAllSquads(const FStrategyOrder& Order, int32 Max
 			}
 		}
 	}
+}
+
+void AStrategyAICommander::UpdateGarrisonBehavior()
+{
+	AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	TArray<AStrategyControlPoint*> Points;
+	TArray<FStrategyGarrisonDestination> Destinations;
+	for (AStrategyControlPoint* Point : State->GetControlPoints())
+	{
+		if (!IsValid(Point) || Point->GetStrategyFaction() != EStrategyFaction::Enemy)
+		{
+			continue;
+		}
+		const FStrategyTownDevelopment& Development = Point->GetTownDevelopment();
+		Points.Add(Point);
+		Destinations.Add({FVector2D(Point->GetActorLocation().X, Point->GetActorLocation().Y),
+			Point->GetGarrisonCapacity() - Point->GetGarrisonedSquads().Num(),
+			Development.Specialization == EStrategyTownSpecialization::Fortress
+				&& Development.State == EStrategyTownDevelopmentState::Active,
+			Point->IsCapital()});
+	}
+
+	const FVector ExitTarget = FindRecoveryExitTarget();
+	for (AStrategySquad* Squad : State->GetSquads())
+	{
+		if (!IsValid(Squad) || Squad->GetFaction() != EStrategyFaction::Enemy)
+		{
+			continue;
+		}
+		if (Squad->IsGarrisoned())
+		{
+			if (FStrategyGarrisonRules::ShouldAILeave(Squad->GetHealthPercent()))
+			{
+				AStrategyControlPoint* Point = Squad->GetGarrisonPoint();
+				FVector Direction = (ExitTarget - Point->GetActorLocation()).GetSafeNormal2D();
+				Direction = Direction.IsNearlyZero() ? FVector::ForwardVector : Direction;
+				Squad->ExitGarrison(Point->GetActorLocation() + Direction * 760.0f);
+			}
+			continue;
+		}
+		if (!Squad->IsGarrisonRequested() && FStrategyGarrisonRules::ShouldAIRetreat(Squad->GetHealthPercent()))
+		{
+			const FVector Location = Squad->GetCenterLocation();
+			const int32 Index = FStrategyGarrisonRules::FindBestDestination(
+				FVector2D(Location.X, Location.Y), Destinations);
+			if (Points.IsValidIndex(Index))
+			{
+				Squad->RequestGarrison(Points[Index]);
+				--Destinations[Index].AvailableSlots;
+			}
+		}
+	}
+}
+
+FVector AStrategyAICommander::FindRecoveryExitTarget() const
+{
+	AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	if (AStrategyControlPoint* Neutral = FindNeutralPoint())
+	{
+		return Neutral->GetActorLocation();
+	}
+	for (AStrategyControlPoint* Point : State->GetControlPoints())
+	{
+		if (IsValid(Point) && Point->GetStrategyFaction() == EStrategyFaction::Player && !Point->IsCapital())
+		{
+			return Point->GetActorLocation();
+		}
+	}
+	if (AStrategyControlPoint* Capital = State->FindCapital(EStrategyFaction::Player))
+	{
+		return Capital->GetActorLocation();
+	}
+	return FVector::ZeroVector;
 }
 
 FVector AStrategyAICommander::GetNextBuildLocation() const

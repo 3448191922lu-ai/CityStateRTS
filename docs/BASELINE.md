@@ -1,6 +1,6 @@
 # M0 基线与验收记录
 
-日期：2026-09-05。当前为候选基线，未完成整局与人工交互验收，不视为 M0 完成。任务状态以 ROADMAP.md 为准。
+日期：2026-09-05。当前基线已完成整局与人工交互验收，M0 已完成。任务状态以 ROADMAP.md 为准。
 
 本文保留初始候选记录；最新拖拽代码修正、19 项测试及同步采集结果参见 M0-CURRENT.md。B-001/B-004 的当前处理状态以该文件及 ROADMAP.md 为准。
 
@@ -22,7 +22,7 @@
 | Windows 打包 | 已验收：BUILD SUCCESSFUL，退出码 0 | Saved/Verification/M0/Packaging.log；verification/M0-package.csv 校验 48 个交付文件 |
 | 默认地图启动 | 已验收：默认地图加载，15 秒及 60 秒无采集复测正常退出 | Builds/Windows_M0/RTS.exe；Smoke-no-csv.log / Smoke-60-no-csv.log，退出码均为 0 |
 | 60 秒采集退出 | 有缺陷：两轮退出码均为 777003 | Smoke.log / Smoke-repeat.log；同条件可复现，不能视为正常退出 |
-| 整局与人工交互 | 待验收 | 下方人工操作表，未用短时启动替代 |
+| 整局与人工交互 | 已验收：用户完成一整局并确认核心系统与 R 重开正常 | 下方人工操作表及用户验收结论 |
 | 启动性能采集 | 已记录，仅作参考 | verification/M0-startup-performance.json 和 M0-startup-frames.csv |
 | Git/LFS | 配置已建立，候选提交保存于 baseline/m0 | 511 个 uasset/umap 使用 LFS；M0 验收前不打完成标签 |
 | 源码、配置与资产快照 | 已验收：585 文件 SHA-256 一致 | D:/ue project/RTS_Backups/M0-20260905-0415；verification/M0-files.csv |

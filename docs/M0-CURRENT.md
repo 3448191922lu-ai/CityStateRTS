@@ -2,7 +2,7 @@
 
 ## 2026-09-05 本次改动
 
-保留并核验工作区既有的小队拖拽改动：控制器处理徽记点击、拖拽和命令，HUD 绘制徽记、生命条、方向箭头与落点。整套交互尚待人工验收。
+保留并核验工作区既有的小队拖拽改动：控制器处理徽记点击、拖拽和命令，HUD 绘制徽记、生命条、方向箭头与落点。用户已完成人工验收并确认交互正常。
 
 修复长拖拽结束后第一次点击被吞的问题：IA_Strategy_SelectHold 使用 Hold，普通和追加点击使用 Tap；长拖拽不会产生 Tap，旧 bConsumeNextSelectClick 可残留。现在每次 SelectHoldStarted 开始时清除上一轮标记，再决定当前按下是否命中徽记。没有删除原有注释或 TODO。
 
@@ -39,8 +39,8 @@ RTS!FRunnableThreadWin::Run
 - 规则测试：19/19 通过，Saved/Verification/M0-Current/Regression-green/。
 - Windows 当前包：打包通过，BuildCookRun 退出码 0，输出 Builds/Windows_M0_Current/RTS.exe；交付文件摘要见 verification/M0-current-package.csv。
 - 当前包脚本采集：通过；60 秒、300 帧、退出码 0、运行错误数 0，见 verification/M0-current-capture.json。原日志位于 Saved/Verification/Startup-20260905-125102/。
-- 人工整局与交互：待验收，继续按 BASELINE.md 功能表；旧基线的“HUD 接入缺失”已被当前代码接入取代，不能再当作当前实现结论。
+- 人工整局与交互：已验收；用户完成一整局并确认建造、训练、占领、战斗、迷雾、AI、胜负、R 重开及小队拖拽 HUD 正常。旧基线的“HUD 接入缺失”已被当前代码接入取代。
 
-下一步人工重点：拖徽记后立即点击建筑或地面；Shift 追加选择；拖动多选小队；拖向敌军；拖拽与建造切换；完整胜负与重开。M0 未通过前不启动 M1–M4。
+M0 已通过；M1 开局提示与整局阻断核验也已完成，后续状态以 ROADMAP.md 为准。
 
 本轮源码快照见 verification/M0-current-source.csv，独立同盘备份位于 D:/ue project/RTS_Backups/M0-Current-20260905。引擎和工具的完整调试日志保留在 Saved/Verification/M0-Current，临时 WinDbg 仅解压在该目录，未安装到系统。

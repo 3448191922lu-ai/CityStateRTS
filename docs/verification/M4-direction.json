@@ -1,0 +1,44 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "DESKTOP-101AJPT",
+			"instance": "3D39AA034F5FB6B3BBAC02B2C5BE8E59",
+			"instanceName": "DESKTOP-101AJPT-36772",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (23H2) [10.0.22631.7376] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+			"cPUModel": "12th Gen Intel(R) Core(TM) i7-12700H",
+			"rAMInGB": 16,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.09.07-10.27.00",
+	"succeeded": 1,
+	"succeededWithWarnings": 0,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 0.016585402190685272,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "PresentationRules",
+			"fullTestPath": "RTS.Strategy.Systems.PresentationRules",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"3D39AA034F5FB6B3BBAC02B2C5BE8E59"
+			],
+			"duration": 0.016585402190685272,
+			"dateTime": "2026.09.07-10.27.00",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}

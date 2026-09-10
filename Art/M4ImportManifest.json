@@ -1,0 +1,770 @@
+{
+  "sourceRoot": "D:/素材/游戏素材/CityStateRTS/M4",
+  "downloadDate": "2026-09-06",
+  "sources": [
+    {
+      "name": "Knight Character",
+      "url": "https://quaternius.com/packs/knightcharacter.html",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "RPG Characters",
+      "url": "https://quaternius.com/packs/rpgcharacters.html",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "Ultimate Animated Animals",
+      "url": "https://quaternius.com/packs/ultimateanimatedanimals.html",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "Universal Animation Library",
+      "url": "https://quaternius.com/packs/universalanimationlibrary.html",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "Medieval Village MegaKit",
+      "url": "https://quaternius.com/packs/medievalvillagemegakit.html",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "Medieval Village Pack",
+      "url": "https://quaternius.com/packs/medievalvillage.html",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "Ultimate Nature Pack",
+      "url": "https://quaternius.com/packs/ultimatenature.html",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "Castle Kit",
+      "url": "https://kenney.nl/assets/castle-kit",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "UI Audio",
+      "url": "https://kenney.nl/assets/ui-audio",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "Interface Sounds",
+      "url": "https://kenney.nl/assets/interface-sounds",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "RPG Audio",
+      "url": "https://kenney.nl/assets/rpg-audio",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "Impact Sounds",
+      "url": "https://kenney.nl/assets/impact-sounds",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "Cobblestone 05",
+      "url": "https://polyhaven.com/a/cobblestone_05",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "Medieval Wood",
+      "url": "https://polyhaven.com/a/medieval_wood",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "Leafy Grass",
+      "url": "https://polyhaven.com/a/leafy_grass",
+      "license": "CC0-1.0"
+    },
+    {
+      "name": "Dirt",
+      "url": "https://polyhaven.com/a/dirt",
+      "license": "CC0-1.0"
+    }
+  ],
+  "assets": [
+    {
+      "role": "InfantryMesh",
+      "sourceFile": "Quaternius/RPGCharacters/FBX/Warrior.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Infantry",
+      "assetName": "SK_Infantry",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/rpgcharacters.html",
+      "sourcePack": "RPG Characters",
+      "assetType": "skeletalMesh"
+    },
+    {
+      "role": "ArcherMesh",
+      "sourceFile": "Quaternius/RPGCharacters/FBX/Ranger.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Archer",
+      "assetName": "SK_Archer",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/rpgcharacters.html",
+      "sourcePack": "RPG Characters",
+      "assetType": "skeletalMesh"
+    },
+    {
+      "role": "CavalryHorseMesh",
+      "sourceFile": "Quaternius/AnimatedAnimals/FBX/Horse.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Cavalry",
+      "assetName": "SK_Horse",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/ultimateanimatedanimals.html",
+      "sourcePack": "Ultimate Animated Animals",
+      "assetType": "skeletalMesh"
+    },
+    {
+      "role": "CavalryRiderMesh",
+      "sourceFile": "Quaternius/Knight/FBX/KnightCharacter.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Cavalry",
+      "assetName": "SK_Rider",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/knightcharacter.html",
+      "sourcePack": "Knight Character",
+      "assetType": "skeletalMesh"
+    },
+    {
+      "role": "InfantryIdle",
+      "sourceFile": "Quaternius/RPGCharacters/FBX/Warrior.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Infantry_Idle",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/rpgcharacters.html",
+      "sourcePack": "RPG Characters",
+      "assetType": "animation",
+      "skeletonRole": "InfantryMesh",
+      "sourceAnimation": "Idle"
+    },
+    {
+      "role": "InfantryMove",
+      "sourceFile": "Quaternius/RPGCharacters/FBX/Warrior.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Infantry_Move",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/rpgcharacters.html",
+      "sourcePack": "RPG Characters",
+      "assetType": "animation",
+      "skeletonRole": "InfantryMesh",
+      "sourceAnimation": "Run_Weapon"
+    },
+    {
+      "role": "InfantryAttack",
+      "sourceFile": "Quaternius/RPGCharacters/FBX/Warrior.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Infantry_Attack",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/rpgcharacters.html",
+      "sourcePack": "RPG Characters",
+      "assetType": "animation",
+      "skeletonRole": "InfantryMesh",
+      "sourceAnimation": "Sword_Attack"
+    },
+    {
+      "role": "InfantryDeath",
+      "sourceFile": "Quaternius/RPGCharacters/FBX/Warrior.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Infantry_Death",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/rpgcharacters.html",
+      "sourcePack": "RPG Characters",
+      "assetType": "animation",
+      "skeletonRole": "InfantryMesh",
+      "sourceAnimation": "Death"
+    },
+    {
+      "role": "ArcherIdle",
+      "sourceFile": "Quaternius/RPGCharacters/FBX/Ranger.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Archer_Idle",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/rpgcharacters.html",
+      "sourcePack": "RPG Characters",
+      "assetType": "animation",
+      "skeletonRole": "ArcherMesh",
+      "sourceAnimation": "Idle_Weapon"
+    },
+    {
+      "role": "ArcherMove",
+      "sourceFile": "Quaternius/RPGCharacters/FBX/Ranger.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Archer_Move",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/rpgcharacters.html",
+      "sourcePack": "RPG Characters",
+      "assetType": "animation",
+      "skeletonRole": "ArcherMesh",
+      "sourceAnimation": "Run_Holding"
+    },
+    {
+      "role": "ArcherAttack",
+      "sourceFile": "Quaternius/RPGCharacters/FBX/Ranger.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Archer_Attack",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/rpgcharacters.html",
+      "sourcePack": "RPG Characters",
+      "assetType": "animation",
+      "skeletonRole": "ArcherMesh",
+      "sourceAnimation": "Bow_Attack_Shoot"
+    },
+    {
+      "role": "ArcherDeath",
+      "sourceFile": "Quaternius/RPGCharacters/FBX/Ranger.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Archer_Death",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/rpgcharacters.html",
+      "sourcePack": "RPG Characters",
+      "assetType": "animation",
+      "skeletonRole": "ArcherMesh",
+      "sourceAnimation": "Death"
+    },
+    {
+      "role": "HorseIdle",
+      "sourceFile": "Quaternius/AnimatedAnimals/FBX/Horse.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Horse_Idle",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/ultimateanimatedanimals.html",
+      "sourcePack": "Ultimate Animated Animals",
+      "assetType": "animation",
+      "skeletonRole": "CavalryHorseMesh",
+      "sourceAnimation": "Idle"
+    },
+    {
+      "role": "HorseMove",
+      "sourceFile": "Quaternius/AnimatedAnimals/FBX/Horse.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Horse_Move",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/ultimateanimatedanimals.html",
+      "sourcePack": "Ultimate Animated Animals",
+      "assetType": "animation",
+      "skeletonRole": "CavalryHorseMesh",
+      "sourceAnimation": "Gallop"
+    },
+    {
+      "role": "HorseAttack",
+      "sourceFile": "Quaternius/AnimatedAnimals/FBX/Horse.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Horse_Attack",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/ultimateanimatedanimals.html",
+      "sourcePack": "Ultimate Animated Animals",
+      "assetType": "animation",
+      "skeletonRole": "CavalryHorseMesh",
+      "sourceAnimation": "Attack_Kick"
+    },
+    {
+      "role": "HorseDeath",
+      "sourceFile": "Quaternius/AnimatedAnimals/FBX/Horse.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Horse_Death",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/ultimateanimatedanimals.html",
+      "sourcePack": "Ultimate Animated Animals",
+      "assetType": "animation",
+      "skeletonRole": "CavalryHorseMesh",
+      "sourceAnimation": "Death"
+    },
+    {
+      "role": "RiderIdle",
+      "sourceFile": "Quaternius/Knight/FBX/KnightCharacter.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Rider_Idle",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/knightcharacter.html",
+      "sourcePack": "Knight Character",
+      "assetType": "animation",
+      "skeletonRole": "CavalryRiderMesh",
+      "sourceAnimation": "Idle_swordRight"
+    },
+    {
+      "role": "RiderMove",
+      "sourceFile": "Quaternius/Knight/FBX/KnightCharacter.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Rider_Move",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/knightcharacter.html",
+      "sourcePack": "Knight Character",
+      "assetType": "animation",
+      "skeletonRole": "CavalryRiderMesh",
+      "sourceAnimation": "Walking"
+    },
+    {
+      "role": "RiderAttack",
+      "sourceFile": "Quaternius/Knight/FBX/KnightCharacter.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Rider_Attack",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/knightcharacter.html",
+      "sourcePack": "Knight Character",
+      "assetType": "animation",
+      "skeletonRole": "CavalryRiderMesh",
+      "sourceAnimation": "Run_swordAttack"
+    },
+    {
+      "role": "RiderDeath",
+      "sourceFile": "Quaternius/Knight/FBX/KnightCharacter.fbx",
+      "destination": "/Game/CityStateRTS/Art/Characters/Animations",
+      "assetName": "A_Rider_Death",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/knightcharacter.html",
+      "sourcePack": "Knight Character",
+      "assetType": "animation",
+      "skeletonRole": "CavalryRiderMesh",
+      "sourceAnimation": "Death"
+    },
+    {
+      "role": "BarracksMesh",
+      "sourceFile": "Quaternius/MedievalVillage/Buildings/FBX/Blacksmith.fbx",
+      "destination": "/Game/CityStateRTS/Art/Buildings",
+      "assetName": "SM_Barracks",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/medievalvillage.html",
+      "sourcePack": "Medieval Village Pack",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "ArcheryRangeMesh",
+      "sourceFile": "Quaternius/MedievalVillage/Buildings/FBX/Sawmill.fbx",
+      "destination": "/Game/CityStateRTS/Art/Buildings",
+      "assetName": "SM_ArcheryRange",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/medievalvillage.html",
+      "sourcePack": "Medieval Village Pack",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "StableMesh",
+      "sourceFile": "Quaternius/MedievalVillage/Buildings/FBX/Stable.fbx",
+      "destination": "/Game/CityStateRTS/Art/Buildings",
+      "assetName": "SM_Stable",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/medievalvillage.html",
+      "sourcePack": "Medieval Village Pack",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "HouseMesh",
+      "sourceFile": "Quaternius/MedievalVillage/Buildings/FBX/House_1.fbx",
+      "destination": "/Game/CityStateRTS/Art/Buildings",
+      "assetName": "SM_House",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/medievalvillage.html",
+      "sourcePack": "Medieval Village Pack",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "TowerMesh",
+      "sourceFile": "Quaternius/MedievalVillage/Buildings/FBX/Bell_Tower.fbx",
+      "destination": "/Game/CityStateRTS/Art/Buildings",
+      "assetName": "SM_Tower",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/medievalvillage.html",
+      "sourcePack": "Medieval Village Pack",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "CapitalMesh",
+      "sourceFile": "Quaternius/MedievalVillage/Buildings/FBX/Inn.fbx",
+      "destination": "/Game/CityStateRTS/Art/Buildings",
+      "assetName": "SM_Capital",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/medievalvillage.html",
+      "sourcePack": "Medieval Village Pack",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "TownMesh",
+      "sourceFile": "Quaternius/MedievalVillage/Buildings/FBX/House_3.fbx",
+      "destination": "/Game/CityStateRTS/Art/Buildings",
+      "assetName": "SM_Town",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/medievalvillage.html",
+      "sourcePack": "Medieval Village Pack",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "WallMesh",
+      "sourceFile": "Audio/Kenney-Castle-Kit/Models/FBX format/wall.fbx",
+      "destination": "/Game/CityStateRTS/Art/Buildings",
+      "assetName": "SM_Wall",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/castle-kit",
+      "sourcePack": "Castle Kit",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "GateMesh",
+      "sourceFile": "Audio/Kenney-Castle-Kit/Models/FBX format/gate.fbx",
+      "destination": "/Game/CityStateRTS/Art/Buildings",
+      "assetName": "SM_Gate",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/castle-kit",
+      "sourcePack": "Castle Kit",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "FlagMesh",
+      "sourceFile": "Audio/Kenney-Castle-Kit/Models/FBX format/flag-banner-long.fbx",
+      "destination": "/Game/CityStateRTS/Art/Environment",
+      "assetName": "SM_Flag",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/castle-kit",
+      "sourcePack": "Castle Kit",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "TreeMeshA",
+      "sourceFile": "Quaternius/UltimateNature/FBX/CommonTree_1.fbx",
+      "destination": "/Game/CityStateRTS/Art/Environment",
+      "assetName": "SM_Tree_Common",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/ultimatenature.html",
+      "sourcePack": "Ultimate Nature Pack",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "TreeMeshB",
+      "sourceFile": "Quaternius/UltimateNature/FBX/PineTree_1.fbx",
+      "destination": "/Game/CityStateRTS/Art/Environment",
+      "assetName": "SM_Tree_Pine",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/ultimatenature.html",
+      "sourcePack": "Ultimate Nature Pack",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "RockMeshA",
+      "sourceFile": "Quaternius/UltimateNature/FBX/Rock_1.fbx",
+      "destination": "/Game/CityStateRTS/Art/Environment",
+      "assetName": "SM_Rock",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/ultimatenature.html",
+      "sourcePack": "Ultimate Nature Pack",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "BridgeMesh",
+      "sourceFile": "Audio/Kenney-Castle-Kit/Models/FBX format/bridge-straight.fbx",
+      "destination": "/Game/CityStateRTS/Art/Environment",
+      "assetName": "SM_Bridge",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/castle-kit",
+      "sourcePack": "Castle Kit",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "ArrowMesh",
+      "sourceFile": "Quaternius/RPGCharacters/FBX/Only Weapons/Ranger_Arrow.fbx",
+      "destination": "/Game/CityStateRTS/Art/Effects",
+      "assetName": "SM_Arrow",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://quaternius.com/packs/rpgcharacters.html",
+      "sourcePack": "RPG Characters",
+      "assetType": "staticMesh"
+    },
+    {
+      "role": "StoneBaseColor",
+      "sourceFile": "PolyHaven/cobblestone_05/cobblestone_05_Diffuse_2k.jpg",
+      "destination": "/Game/CityStateRTS/Art/Materials/Textures",
+      "assetName": "T_Stone_BaseColor",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://polyhaven.com/a/cobblestone_05",
+      "sourcePack": "Cobblestone 05",
+      "assetType": "texture"
+    },
+    {
+      "role": "StoneNormal",
+      "sourceFile": "PolyHaven/cobblestone_05/cobblestone_05_NormalDX_2k.jpg",
+      "destination": "/Game/CityStateRTS/Art/Materials/Textures",
+      "assetName": "T_Stone_Normal",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://polyhaven.com/a/cobblestone_05",
+      "sourcePack": "Cobblestone 05",
+      "assetType": "texture"
+    },
+    {
+      "role": "StoneRoughness",
+      "sourceFile": "PolyHaven/cobblestone_05/cobblestone_05_Roughness_2k.jpg",
+      "destination": "/Game/CityStateRTS/Art/Materials/Textures",
+      "assetName": "T_Stone_Roughness",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://polyhaven.com/a/cobblestone_05",
+      "sourcePack": "Cobblestone 05",
+      "assetType": "texture"
+    },
+    {
+      "role": "WoodBaseColor",
+      "sourceFile": "PolyHaven/medieval_wood/medieval_wood_Diffuse_2k.jpg",
+      "destination": "/Game/CityStateRTS/Art/Materials/Textures",
+      "assetName": "T_Wood_BaseColor",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://polyhaven.com/a/medieval_wood",
+      "sourcePack": "Medieval Wood",
+      "assetType": "texture"
+    },
+    {
+      "role": "WoodNormal",
+      "sourceFile": "PolyHaven/medieval_wood/medieval_wood_NormalDX_2k.jpg",
+      "destination": "/Game/CityStateRTS/Art/Materials/Textures",
+      "assetName": "T_Wood_Normal",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://polyhaven.com/a/medieval_wood",
+      "sourcePack": "Medieval Wood",
+      "assetType": "texture"
+    },
+    {
+      "role": "WoodRoughness",
+      "sourceFile": "PolyHaven/medieval_wood/medieval_wood_Roughness_2k.jpg",
+      "destination": "/Game/CityStateRTS/Art/Materials/Textures",
+      "assetName": "T_Wood_Roughness",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://polyhaven.com/a/medieval_wood",
+      "sourcePack": "Medieval Wood",
+      "assetType": "texture"
+    },
+    {
+      "role": "GroundBaseColor",
+      "sourceFile": "PolyHaven/leafy_grass/leafy_grass_Diffuse_2k.jpg",
+      "destination": "/Game/CityStateRTS/Art/Materials/Textures",
+      "assetName": "T_Ground_BaseColor",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://polyhaven.com/a/leafy_grass",
+      "sourcePack": "Leafy Grass",
+      "assetType": "texture"
+    },
+    {
+      "role": "GroundNormal",
+      "sourceFile": "PolyHaven/leafy_grass/leafy_grass_NormalDX_2k.jpg",
+      "destination": "/Game/CityStateRTS/Art/Materials/Textures",
+      "assetName": "T_Ground_Normal",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://polyhaven.com/a/leafy_grass",
+      "sourcePack": "Leafy Grass",
+      "assetType": "texture"
+    },
+    {
+      "role": "GroundRoughness",
+      "sourceFile": "PolyHaven/leafy_grass/leafy_grass_Roughness_2k.jpg",
+      "destination": "/Game/CityStateRTS/Art/Materials/Textures",
+      "assetName": "T_Ground_Roughness",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://polyhaven.com/a/leafy_grass",
+      "sourcePack": "Leafy Grass",
+      "assetType": "texture"
+    },
+    {
+      "role": "RoadBaseColor",
+      "sourceFile": "PolyHaven/dirt/dirt_Diffuse_2k.jpg",
+      "destination": "/Game/CityStateRTS/Art/Materials/Textures",
+      "assetName": "T_Road_BaseColor",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://polyhaven.com/a/dirt",
+      "sourcePack": "Dirt",
+      "assetType": "texture"
+    },
+    {
+      "role": "RoadNormal",
+      "sourceFile": "PolyHaven/dirt/dirt_NormalDX_2k.jpg",
+      "destination": "/Game/CityStateRTS/Art/Materials/Textures",
+      "assetName": "T_Road_Normal",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://polyhaven.com/a/dirt",
+      "sourcePack": "Dirt",
+      "assetType": "texture"
+    },
+    {
+      "role": "RoadRoughness",
+      "sourceFile": "PolyHaven/dirt/dirt_Roughness_2k.jpg",
+      "destination": "/Game/CityStateRTS/Art/Materials/Textures",
+      "assetName": "T_Road_Roughness",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://polyhaven.com/a/dirt",
+      "sourcePack": "Dirt",
+      "assetType": "texture"
+    },
+    {
+      "role": "SelectSound",
+      "sourceFile": "Audio/Kenney-Interface-Sounds/Audio/select_001.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_Select",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "sourcePack": "Interface Sounds",
+      "assetType": "sound"
+    },
+    {
+      "role": "MoveSound",
+      "sourceFile": "Audio/Kenney-Interface-Sounds/Audio/drop_001.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_Move",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "sourcePack": "Interface Sounds",
+      "assetType": "sound"
+    },
+    {
+      "role": "AttackOrderSound",
+      "sourceFile": "Audio/Kenney-Interface-Sounds/Audio/select_004.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_AttackOrder",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "sourcePack": "Interface Sounds",
+      "assetType": "sound"
+    },
+    {
+      "role": "InvalidSound",
+      "sourceFile": "Audio/Kenney-Interface-Sounds/Audio/error_001.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_Invalid",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "sourcePack": "Interface Sounds",
+      "assetType": "sound"
+    },
+    {
+      "role": "ConstructionStartSound",
+      "sourceFile": "Audio/Kenney-RPG-Audio/Audio/metalLatch.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_ConstructionStart",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/rpg-audio",
+      "sourcePack": "RPG Audio",
+      "assetType": "sound"
+    },
+    {
+      "role": "ConstructionCompleteSound",
+      "sourceFile": "Audio/Kenney-Interface-Sounds/Audio/confirmation_001.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_ConstructionComplete",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "sourcePack": "Interface Sounds",
+      "assetType": "sound"
+    },
+    {
+      "role": "TrainingCompleteSound",
+      "sourceFile": "Audio/Kenney-Interface-Sounds/Audio/confirmation_002.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_TrainingComplete",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "sourcePack": "Interface Sounds",
+      "assetType": "sound"
+    },
+    {
+      "role": "CaptureContestedSound",
+      "sourceFile": "Audio/Kenney-Interface-Sounds/Audio/bong_001.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_CaptureContested",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "sourcePack": "Interface Sounds",
+      "assetType": "sound"
+    },
+    {
+      "role": "CaptureCompleteSound",
+      "sourceFile": "Audio/Kenney-Interface-Sounds/Audio/confirmation_003.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_CaptureComplete",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "sourcePack": "Interface Sounds",
+      "assetType": "sound"
+    },
+    {
+      "role": "MeleeHitSound",
+      "sourceFile": "Audio/Kenney-RPG-Audio/Audio/knifeSlice.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_MeleeHit",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/rpg-audio",
+      "sourcePack": "RPG Audio",
+      "assetType": "sound"
+    },
+    {
+      "role": "ArrowShotSound",
+      "sourceFile": "Audio/Kenney-RPG-Audio/Audio/drawKnife1.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_ArrowShot",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/rpg-audio",
+      "sourcePack": "RPG Audio",
+      "assetType": "sound"
+    },
+    {
+      "role": "ArrowHitSound",
+      "sourceFile": "Audio/Kenney-Impact-Sounds/Audio/impactWood_light_000.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_ArrowHit",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/impact-sounds",
+      "sourcePack": "Impact Sounds",
+      "assetType": "sound"
+    },
+    {
+      "role": "HoofSound",
+      "sourceFile": "Audio/Kenney-RPG-Audio/Audio/footstep00.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_Hoof",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/rpg-audio",
+      "sourcePack": "RPG Audio",
+      "assetType": "sound"
+    },
+    {
+      "role": "TowerShotSound",
+      "sourceFile": "Audio/Kenney-RPG-Audio/Audio/drawKnife2.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_TowerShot",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/rpg-audio",
+      "sourcePack": "RPG Audio",
+      "assetType": "sound"
+    },
+    {
+      "role": "BuildingHitSound",
+      "sourceFile": "Audio/Kenney-Impact-Sounds/Audio/impactPlank_medium_000.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_BuildingHit",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/impact-sounds",
+      "sourcePack": "Impact Sounds",
+      "assetType": "sound"
+    },
+    {
+      "role": "BuildingDestroyedSound",
+      "sourceFile": "Audio/Kenney-Impact-Sounds/Audio/impactWood_heavy_000.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_BuildingDestroyed",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/impact-sounds",
+      "sourcePack": "Impact Sounds",
+      "assetType": "sound"
+    },
+    {
+      "role": "VictorySound",
+      "sourceFile": "Audio/Kenney-Interface-Sounds/Audio/confirmation_004.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_Victory",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "sourcePack": "Interface Sounds",
+      "assetType": "sound"
+    },
+    {
+      "role": "DefeatSound",
+      "sourceFile": "Audio/Kenney-Interface-Sounds/Audio/error_008.ogg",
+      "destination": "/Game/CityStateRTS/Art/Audio",
+      "assetName": "S_Defeat",
+      "license": "CC0-1.0",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "sourcePack": "Interface Sounds",
+      "assetType": "sound"
+    }
+  ]
+}

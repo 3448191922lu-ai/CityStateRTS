@@ -1,0 +1,36 @@
+{
+  "reportCreatedOn": "2026.09.08-01.08",
+  "build": {
+    "target": "RTSEditor Win64 Development",
+    "result": "Succeeded"
+  },
+  "automation": {
+    "filter": "RTS.Strategy.Territory",
+    "succeeded": 7,
+    "succeededWithWarnings": 0,
+    "failed": 0,
+    "notRun": 0,
+    "sourceReport": "Saved/Verification/M5/TerritoryUIFinal/index.json"
+  },
+  "runtimeSmoke": {
+    "map": "/Game/CityStateRTS/Maps/LVL_CityStateSkirmish",
+    "aliveBeforeStop": true,
+    "runtimeSeconds": 36.0,
+    "fatalErrors": 0,
+    "unhandledExceptions": 0,
+    "assertionFailures": 0,
+    "log": "Saved/Verification/M5/TerritoryUIRuntimeGreen.log"
+  },
+  "regressions": [
+    {
+      "name": "表现数据初始化顺序崩溃",
+      "red": "PresentationDefinitionAvailability 0/1",
+      "green": "PresentationDefinitionAvailability 1/1"
+    },
+    {
+      "name": "敌方建设中专精信息泄露",
+      "result": "TownVisibilityPolicy 覆盖并通过"
+    }
+  ],
+  "manualInteraction": "待用户或可访问原生窗口的环境验证"
+}

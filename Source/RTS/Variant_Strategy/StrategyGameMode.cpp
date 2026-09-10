@@ -5,6 +5,8 @@
 
 #include "Kismet/GameplayStatics.h"
 #include "StrategyGameState.h"
+#include "StrategyMapDefinition.h"
+#include "StrategyMapTerrain.h"
 #include "StrategyPawn.h"
 #include "StrategyUnit.h"
 #include "StrategyWorldActors.h"
@@ -27,6 +29,7 @@ void AStrategyGameMode::BeginPlay()
 
 	AStrategyGameState* State = GetGameState<AStrategyGameState>();
 	check(State);
+	const FStrategySkirmishMapDefinition MapDefinition = FStrategyMapDefinitions::Resolve(GetWorld()->GetMapName());
 	auto SpawnPoint = [this](const FVector& Location, EStrategyFaction Faction, bool bCapital)
 	{
 		AStrategyControlPoint* Point = GetWorld()->SpawnActor<AStrategyControlPoint>(AStrategyControlPoint::StaticClass(), Location, FRotator::ZeroRotator);
@@ -34,15 +37,16 @@ void AStrategyGameMode::BeginPlay()
 		Point->Initialize(Faction, bCapital);
 	};
 
-	SpawnPoint(FVector(-7000.0f, 0.0f, 0.0f), EStrategyFaction::Player, true);
-	SpawnPoint(FVector(7000.0f, 0.0f, 0.0f), EStrategyFaction::Enemy, true);
-	SpawnPoint(FVector(0.0f, 0.0f, 0.0f), EStrategyFaction::Neutral, false);
-	SpawnPoint(FVector(0.0f, 4000.0f, 0.0f), EStrategyFaction::Neutral, false);
-	SpawnPoint(FVector(0.0f, -4000.0f, 0.0f), EStrategyFaction::Neutral, false);
+	SpawnPoint(MapDefinition.PlayerCapital, EStrategyFaction::Player, true);
+	SpawnPoint(MapDefinition.EnemyCapital, EStrategyFaction::Enemy, true);
+	for (const FVector& TownLocation : MapDefinition.NeutralTowns)
+	{
+		SpawnPoint(TownLocation, EStrategyFaction::Neutral, false);
+	}
 
 	for (const TPair<EStrategyFaction, FVector> Start : {
-		TPair<EStrategyFaction, FVector>(EStrategyFaction::Player, FVector(-5600.0f, 0.0f, 100.0f)),
-		TPair<EStrategyFaction, FVector>(EStrategyFaction::Enemy, FVector(5600.0f, 0.0f, 100.0f))})
+		TPair<EStrategyFaction, FVector>(EStrategyFaction::Player, MapDefinition.PlayerSquadStart),
+		TPair<EStrategyFaction, FVector>(EStrategyFaction::Enemy, MapDefinition.EnemySquadStart)})
 	{
 		const UStrategyUnitDataAsset* Infantry = State->GetUnitDefinition(EStrategyUnitType::Infantry);
 		check(State->TrySpendAndReserve(Start.Key, 0.0f, Infantry->PopulationCost));
@@ -51,6 +55,9 @@ void AStrategyGameMode::BeginPlay()
 
 	GetWorld()->SpawnActor<AStrategyAICommander>();
 	GetWorld()->SpawnActor<AStrategyFogOfWar>();
+	AStrategyMapTerrain* Terrain = GetWorld()->SpawnActor<AStrategyMapTerrain>();
+	check(Terrain);
+	Terrain->InitializePresentation(MapDefinition);
 
 }
 

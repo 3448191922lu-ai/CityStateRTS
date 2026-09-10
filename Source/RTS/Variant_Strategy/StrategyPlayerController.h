@@ -17,8 +17,11 @@ struct FInputActionInstance;
 class AStrategyUnit;
 class AStrategySquad;
 class AStrategyBuilding;
+class AStrategyControlPoint;
 class AStaticMeshActor;
 class UStrategyTouchControls;
+class UStrategyPauseMenu;
+class UStrategyHUDRoot;
 
 /**
  *  Player Controller for a top-down strategy game.
@@ -107,6 +110,12 @@ protected:
 	/** Pointer to the mobile controls widget */
 	TObjectPtr<UStrategyTouchControls> MobileControlsWidget;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UStrategyPauseMenu> PauseMenu;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UStrategyHUDRoot> HUDRoot;
+
 	/** Touch controls widget class to spawn on mobile platforms */
 	UPROPERTY(EditAnywhere, Category="Input")
 	TSubclassOf<UStrategyTouchControls> MobileControlsWidgetClass;
@@ -168,10 +177,16 @@ protected:
 	TObjectPtr<AStrategyBuilding> SelectedBuilding;
 
 	UPROPERTY()
+	TObjectPtr<AStrategyControlPoint> SelectedControlPoint;
+
+	UPROPERTY()
 	TObjectPtr<AStrategySquad> SquadMarkerSource;
 
 	UPROPERTY()
 	TObjectPtr<AActor> SquadDragTarget;
+
+	UPROPERTY()
+	TObjectPtr<AStrategyControlPoint> SquadDragGarrisonPoint;
 
 	FVector2D SquadMarkerPressScreen = FVector2D::ZeroVector;
 	FVector SquadDragDestination = FVector::ZeroVector;
@@ -184,6 +199,9 @@ protected:
 	bool bWallPlacementActive = false;
 	bool bWallDragging = false;
 	bool bAttackMovePending = false;
+	bool bSelectionFeedbackPending = false;
+	bool bSuppressSelectionFeedback = false;
+	bool bMatchResultFeedbackPlayed = false;
 	uint8 PendingBuildingIndex = 0;
 	FVector WallDragStart = FVector::ZeroVector;
 
@@ -214,15 +232,35 @@ public:
 	const TArray<AStrategyUnit*>& GetSelectedUnits();
 	const TArray<TObjectPtr<AStrategySquad>>& GetSelectedSquads() const { return ControlledSquads; }
 	AStrategyBuilding* GetSelectedBuilding() const { return SelectedBuilding; }
+	AStrategyControlPoint* GetSelectedControlPoint() const { return SelectedControlPoint; }
+	UStrategyHUDRoot* GetHUDRoot() const { return HUDRoot; }
+	void SelectControlPoint(AStrategyControlPoint* Point);
+	bool TrySpecializeSelectedTown(EStrategyTownSpecialization Specialization);
+	bool TryDowngradeSelectedTown();
 	bool IsBuildMenuOpen() const { return bBuildMenuOpen; }
 	bool IsBuildingPlacementActive() const { return bBuildingPlacementActive; }
 	bool IsWallPlacementActive() const { return bWallPlacementActive; }
+	uint8 GetPendingBuildingIndex() const { return PendingBuildingIndex; }
+	bool IsAttackMovePending() const { return bAttackMovePending; }
+	void BeginMoveCommandFromUI();
+	void BeginAttackMoveCommandFromUI();
+	void StopSelectedSquadsFromUI();
+	void ToggleBuildMenuFromUI();
+	void SelectBuildItemFromUI(int32 Index);
+	bool TrainSelectedBuildingFromUI(EStrategyUnitType UnitType);
+	void RestoreGameFocus();
+	bool GetCursorWorldLocationForUI(FVector& Location);
 	bool IsSquadMarkerDragging() const { return bSquadMarkerDragging; }
 	AStrategySquad* GetSquadDragSource() const { return SquadMarkerSource; }
 	const FVector& GetSquadDragDestination() const { return SquadDragDestination; }
 	AActor* GetSquadDragTarget() const { return SquadDragTarget; }
+	AStrategyControlPoint* GetSquadDragGarrisonPoint() const { return SquadDragGarrisonPoint; }
 	bool IsSquadSelected(AStrategySquad* Squad) const { return ControlledSquads.Contains(Squad); }
 	AStrategySquad* FindSquadMarkerAtScreenPosition(const FVector2D& ScreenPosition) const;
+	void OpenPauseMenu();
+	void ClosePauseMenu();
+	void QuitFromPauseMenu();
+	bool IsPauseMenuOpen() const;
 
 	/** Returns the default camera zoom percentage value */
 	float GetDefaultZoomPercentage() const;
@@ -318,6 +356,9 @@ public:
 
 	/** Sets the camera zoom to a percentage between min and max zoom */
 	void DoCameraSetZoomPercentageCommand(float Percentage);
+	void MoveCameraFromMinimap(const FVector2D& WorldLocation);
+	bool GetCameraGroundCorners(TArray<FVector2D>& OutCorners) const;
+	void IssueMinimapCommand(const FVector2D& WorldLocation, AActor* VisibleEnemyTarget);
 
 protected:
 
@@ -355,9 +396,13 @@ protected:
 	void HandleRestartKey();
 	void HandleQuitKey();
 	void UpdateSquadMarkerDragTarget();
+	void RequestSelectedSquadsGarrison(AStrategyControlPoint* Point);
 	void ClearSquadMarkerInput();
 	void UpdateWallPreview(const FVector& End);
 	void ClearWallPreview();
+	void ShowOrderFeedback(const FStrategyOrder& Order);
+	void PlayInvalidActionFeedback(const FString& Message = TEXT("当前操作不可用"));
+	void UpdateMatchResultFeedback();
 
 protected:
 

@@ -11,14 +11,17 @@
 #include "EnvironmentQuery/EnvQueryInstanceBlueprintWrapper.h"
 #include "Engine/OverlapResult.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "EngineUtils.h"
+#include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "NiagaraFunctionLibrary.h"
 #include "StrategyGameState.h"
+#include "StrategyPresentationActors.h"
 #include "StrategyRules.h"
 #include "StrategySystems.h"
 #include "StrategyWorldActors.h"
-#include "StrategyArtStyle.h"
 
 AStrategyUnit::AStrategyUnit()
 {
@@ -37,7 +40,13 @@ AStrategyUnit::AStrategyUnit()
 	BodyMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Body Mesh"));
 	BodyMesh->SetupAttachment(GetCapsuleComponent());
 	BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	GetMesh()->SetHiddenInGame(true);
+
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetMesh()->SetHiddenInGame(false);
+	RiderMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Rider Mesh"));
+	RiderMesh->SetupAttachment(GetMesh());
+	RiderMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	RiderMesh->SetHiddenInGame(true);
 
 	SelectionRing = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Selection Ring"));
 	SelectionRing->SetupAttachment(GetCapsuleComponent());
@@ -67,12 +76,18 @@ AStrategyUnit::AStrategyUnit()
 void AStrategyUnit::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	if (bGarrisoned)
+	{
+		return;
+	}
 	UpdateCombat(DeltaSeconds);
+	UpdatePresentation(DeltaSeconds);
 }
 
 void AStrategyUnit::Initialize(AStrategySquad* InSquad, EStrategyFaction InFaction, const UStrategyUnitDataAsset* InDefinition)
 {
 	Squad = InSquad;
+	Definition = InDefinition;
 	Faction = InFaction;
 	UnitType = InDefinition->UnitType;
 	Health = InDefinition->MaxHealth;
@@ -84,32 +99,34 @@ void AStrategyUnit::Initialize(AStrategySquad* InSquad, EStrategyFaction InFacti
 		? ECC_GameTraceChannel1
 		: ECC_GameTraceChannel2);
 
-	const TCHAR* MeshPath = UnitType == EStrategyUnitType::Infantry
-		? TEXT("/Engine/BasicShapes/Cylinder.Cylinder")
-		: UnitType == EStrategyUnitType::Archer
-			? TEXT("/Engine/BasicShapes/Cone.Cone")
-			: TEXT("/Engine/BasicShapes/Cube.Cube");
-	UStaticMesh* UnitMesh = InDefinition->VisualMesh.Get();
-	if (!UnitMesh)
-	{
-		UnitMesh = LoadObject<UStaticMesh>(nullptr, MeshPath);
-	}
-	BodyMesh->SetStaticMesh(UnitMesh);
-	BodyMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -25.0f));
-	BodyMesh->SetRelativeScale3D(StrategyArtStyle::GetUnitSilhouetteScale(UnitType) * InDefinition->VisualScale);
+	BodyMesh->SetHiddenInGame(true);
+	GetMesh()->SetSkeletalMeshAsset(InDefinition->SkeletalMesh);
+	GetMesh()->SetRelativeTransform(FTransform(FStrategyPresentationRules::GetImportedCharacterMeshRotation(),
+		FVector(0.0f, 0.0f, -88.0f), InDefinition->VisualScale));
+	GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 
-	UMaterialInterface* BaseMaterial = InDefinition->VisualMaterial.Get();
-	if (!BaseMaterial)
-	{
-		BaseMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
-	}
-	UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, this);
-	Material->SetVectorParameterValue(TEXT("Color"), StrategyArtStyle::GetFactionColor(Faction));
-	BodyMesh->SetMaterial(0, Material);
+	const UStrategyPresentationDataAsset* Presentation = GetWorld()->GetGameState<AStrategyGameState>()->GetPresentationDefinition();
+	UMaterialInterface* FactionMaterial = Faction == EStrategyFaction::Player
+		? Presentation->PlayerFactionMaterial.Get()
+		: Presentation->EnemyFactionMaterial.Get();
+	const int32 FactionSlot = GetMesh()->GetMaterialIndex(InDefinition->FactionMaterialSlot);
+	GetMesh()->SetMaterial(FactionSlot, FactionMaterial);
 
-	UMaterialInstanceDynamic* RingMaterial = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+	RiderMesh->SetHiddenInGame(!InDefinition->RiderSkeletalMesh);
+	if (InDefinition->RiderSkeletalMesh)
+	{
+		RiderMesh->SetSkeletalMeshAsset(InDefinition->RiderSkeletalMesh);
+		RiderMesh->SetRelativeTransform(FTransform(FRotator::ZeroRotator, FVector(0.0f, 0.0f, 92.0f), FVector::OneVector));
+		RiderMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		const int32 RiderFactionSlot = RiderMesh->GetMaterialIndex(InDefinition->RiderFactionMaterialSlot);
+		RiderMesh->SetMaterial(RiderFactionSlot, FactionMaterial);
+	}
+
+	UMaterialInterface* RingBaseMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	UMaterialInstanceDynamic* RingMaterial = UMaterialInstanceDynamic::Create(RingBaseMaterial, this);
 	RingMaterial->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.05f, 1.0f, 0.1f));
 	SelectionRing->SetMaterial(0, RingMaterial);
+	PlayVisualState(EStrategyUnitVisualState::Idle);
 }
 
 void AStrategyUnit::NotifyControllerChanged()
@@ -144,7 +161,7 @@ void AStrategyUnit::StopMoving()
 
 void AStrategyUnit::UnitSelected()
 {
-	SelectionRing->SetHiddenInGame(false);
+	SelectionRing->SetHiddenInGame(bGarrisoned);
 	// pass control to BP
 	BP_UnitSelected();
 }
@@ -213,6 +230,10 @@ FVector AStrategyUnit::GetMovementGoal() const
 
 void AStrategyUnit::IssueOrder(const FStrategyOrder& Order)
 {
+	if (bGarrisoned)
+	{
+		return;
+	}
 	bResumeMoveAfterBlocker = false;
 	CurrentOrder = Order;
 	CurrentTarget = Order.TargetActor;
@@ -231,20 +252,44 @@ void AStrategyUnit::IssueOrder(const FStrategyOrder& Order)
 	}
 }
 
+float AStrategyUnit::RestoreHealth(float Amount)
+{
+	const float PreviousHealth = Health;
+	Health = FStrategyGarrisonRules::ClampRecoveredHealth(Health, Definition->MaxHealth, Amount);
+	return Health - PreviousHealth;
+}
+
+void AStrategyUnit::SetGarrisoned(bool bInGarrison)
+{
+	bGarrisoned = bInGarrison;
+	CurrentTarget = nullptr;
+	StopMoving();
+	SetActorEnableCollision(!bGarrisoned);
+	GetMesh()->SetHiddenInGame(bGarrisoned);
+	RiderMesh->SetHiddenInGame(bGarrisoned || !Definition->RiderSkeletalMesh);
+	SelectionRing->SetHiddenInGame(true);
+	if (bGarrisoned)
+	{
+		GetCharacterMovement()->DisableMovement();
+	}
+	else
+	{
+		GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+		PlayVisualState(EStrategyUnitVisualState::Idle);
+	}
+}
+
 void AStrategyUnit::ReceiveStrategyDamage(float InDamage, EStrategyUnitType AttackerType, EStrategyFaction SourceFaction)
 {
-	if (SourceFaction == Faction || Health <= 0.0f)
+	if (bGarrisoned || SourceFaction == Faction || Health <= 0.0f)
 	{
 		return;
 	}
 	Health -= InDamage * FStrategyRules::GetDamageMultiplier(AttackerType, UnitType);
+	PlayHitFeedback();
 	if (Health <= 0.0f)
 	{
-		if (Squad)
-		{
-			Squad->NotifyMemberDied(this);
-		}
-		Destroy();
+		BeginDeathPresentation();
 	}
 }
 
@@ -282,6 +327,10 @@ void AStrategyUnit::FindNearestTarget()
 
 void AStrategyUnit::UpdateCombat(float DeltaSeconds)
 {
+	if (Health <= 0.0f)
+	{
+		return;
+	}
 	AttackCooldown = FMath::Max(0.0f, AttackCooldown - DeltaSeconds);
 	TargetSearchCooldown -= DeltaSeconds;
 	IStrategyDamageable* Damageable = Cast<IStrategyDamageable>(CurrentTarget);
@@ -321,9 +370,109 @@ void AStrategyUnit::UpdateCombat(float DeltaSeconds)
 	SetActorRotation(UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), CurrentTarget->GetActorLocation()));
 	if (AttackCooldown <= 0.0f)
 	{
+		AttackVisualLockRemaining = Definition->AttackVisualDuration;
+		PlayVisualState(EStrategyUnitVisualState::Attack);
+		PlayAttackFeedback();
 		Damageable->ReceiveStrategyDamage(Damage, UnitType, Faction);
 		AttackCooldown = AttackInterval;
 	}
+}
+
+void AStrategyUnit::UpdatePresentation(float DeltaSeconds)
+{
+	AttackVisualLockRemaining = FMath::Max(0.0f, AttackVisualLockRemaining - DeltaSeconds);
+	if (HitFlashRemaining > 0.0f)
+	{
+		HitFlashRemaining = FMath::Max(0.0f, HitFlashRemaining - DeltaSeconds);
+		if (HitFlashRemaining <= 0.0f)
+		{
+			GetMesh()->SetOverlayMaterial(nullptr);
+			RiderMesh->SetOverlayMaterial(nullptr);
+		}
+	}
+	PlayVisualState(FStrategyPresentationRules::ResolveUnitVisualState(
+		Health > 0.0f, AttackVisualLockRemaining > 0.0f, GetVelocity().SizeSquared2D()));
+}
+
+void AStrategyUnit::PlayVisualState(EStrategyUnitVisualState NewState)
+{
+	if (CurrentVisualState == NewState)
+	{
+		return;
+	}
+	CurrentVisualState = NewState;
+	UAnimationAsset* Animation = NewState == EStrategyUnitVisualState::Idle ? Definition->IdleAnimation.Get()
+		: NewState == EStrategyUnitVisualState::Move ? Definition->MoveAnimation.Get()
+		: NewState == EStrategyUnitVisualState::Attack ? Definition->AttackAnimation.Get()
+		: Definition->DeathAnimation.Get();
+	UAnimationAsset* RiderAnimation = NewState == EStrategyUnitVisualState::Idle ? Definition->RiderIdleAnimation.Get()
+		: NewState == EStrategyUnitVisualState::Move ? Definition->RiderMoveAnimation.Get()
+		: NewState == EStrategyUnitVisualState::Attack ? Definition->RiderAttackAnimation.Get()
+		: Definition->RiderDeathAnimation.Get();
+	const bool bLoop = NewState == EStrategyUnitVisualState::Idle || NewState == EStrategyUnitVisualState::Move;
+	GetMesh()->PlayAnimation(Animation, bLoop);
+	if (Definition->RiderSkeletalMesh)
+	{
+		RiderMesh->PlayAnimation(RiderAnimation, bLoop);
+	}
+}
+
+void AStrategyUnit::PlayAttackFeedback()
+{
+	AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	const bool bVisible = State->IsVisibleToFaction(EStrategyFaction::Player, GetActorLocation());
+	if (!FStrategyPresentationRules::CanPlayWorldFeedback(Faction, bVisible))
+	{
+		return;
+	}
+	UGameplayStatics::PlaySoundAtLocation(this, Definition->AttackSound, GetActorLocation());
+	if (UnitType == EStrategyUnitType::Archer)
+	{
+		AStrategyProjectileVisual* Projectile = GetWorld()->SpawnActor<AStrategyProjectileVisual>();
+		Projectile->Initialize(Definition->ProjectileMesh, State->GetPresentationDefinition()->ProjectileTrailEffect,
+			GetActorLocation() + FVector(0.0f, 0.0f, 70.0f), CurrentTarget->GetActorLocation() + FVector(0.0f, 0.0f, 50.0f), 0.25f);
+	}
+}
+
+void AStrategyUnit::PlayHitFeedback()
+{
+	AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	const bool bVisible = State->IsVisibleToFaction(EStrategyFaction::Player, GetActorLocation());
+	if (!FStrategyPresentationRules::CanPlayWorldFeedback(Faction, bVisible))
+	{
+		return;
+	}
+	const UStrategyPresentationDataAsset* Presentation = State->GetPresentationDefinition();
+	GetMesh()->SetOverlayMaterial(Presentation->HitFlashMaterial);
+	RiderMesh->SetOverlayMaterial(Presentation->HitFlashMaterial);
+	HitFlashRemaining = 0.08f;
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, Presentation->HitEffect, GetActorLocation());
+	UGameplayStatics::PlaySoundAtLocation(this, Definition->HitSound, GetActorLocation());
+}
+
+void AStrategyUnit::BeginDeathPresentation()
+{
+	if (bDeathPresentationStarted)
+	{
+		return;
+	}
+	bDeathPresentationStarted = true;
+	if (Squad)
+	{
+		Squad->NotifyMemberDied(this);
+	}
+	CurrentTarget = nullptr;
+	GetCharacterMovement()->DisableMovement();
+	SetActorEnableCollision(false);
+	PlayVisualState(EStrategyUnitVisualState::Dead);
+	AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	if (FStrategyPresentationRules::CanPlayWorldFeedback(Faction,
+		State->IsVisibleToFaction(EStrategyFaction::Player, GetActorLocation())))
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, State->GetPresentationDefinition()->DestructionEffect,
+			GetActorLocation(), FRotator::ZeroRotator, FVector(0.3f));
+	}
+	SetLifeSpan(Definition->DeathVisualDuration);
 }
 
 void AStrategyUnit::OnEQSFinished(UEnvQueryInstanceBlueprintWrapper* QueryInstance, EEnvQueryStatus::Type QueryStatus)

@@ -18,6 +18,10 @@
 #include "Engine/OverlapResult.h"
 #include "InputAction.h"
 #include "StrategyTouchControls.h"
+#include "StrategyPauseMenu.h"
+#include "StrategyHUDRoot.h"
+#include "StrategyHUDModel.h"
+#include "StrategyMinimapModel.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "RTS.h"
 #include "InputCoreTypes.h"
@@ -28,6 +32,8 @@
 #include "Engine/StaticMeshActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "NiagaraFunctionLibrary.h"
+#include "Framework/Application/SlateApplication.h"
 
 AStrategyPlayerController::AStrategyPlayerController()
 {
@@ -38,6 +44,23 @@ AStrategyPlayerController::AStrategyPlayerController()
 void AStrategyPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (IsLocalPlayerController())
+	{
+		PauseMenu = CreateWidget<UStrategyPauseMenu>(this, UStrategyPauseMenu::StaticClass());
+		PauseMenu->InitializeForController(this);
+		PauseMenu->AddToPlayerScreen(100);
+		PauseMenu->SetVisibility(ESlateVisibility::Collapsed);
+		HUDRoot = CreateWidget<UStrategyHUDRoot>(this, UStrategyHUDRoot::StaticClass());
+		HUDRoot->InitializeForController(this);
+		HUDRoot->AddToPlayerScreen(20);
+
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetHideCursorDuringCapture(false);
+		SetInputMode(InputMode);
+		bShowMouseCursor = true;
+	}
 
 	// only spawn touch controls on local player controllers
 	if (IsLocalPlayerController() && ShouldUseTouchControls())
@@ -146,17 +169,33 @@ void AStrategyPlayerController::SetupInputComponent()
 void AStrategyPlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
+	UpdateMatchResultFeedback();
+	if (bSelectionFeedbackPending)
+	{
+		if (const AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>())
+		{
+			if (const UStrategyPresentationDataAsset* Presentation = State->GetPresentationDefinition())
+			{
+				UGameplayStatics::PlaySound2D(this, Presentation->SelectSound);
+			}
+		}
+		bSelectionFeedbackPending = false;
+	}
 	if (!ControlledCameraPawn)
 	{
 		return;
 	}
+	int32 Width = 0;
+	int32 Height = 0;
+	GetViewportSize(Width, Height);
 
 	if (!ShouldUseTouchControls())
 	{
 		const float CameraRotationInput = (IsInputKeyDown(EKeys::C) ? 1.0f : 0.0f) - (IsInputKeyDown(EKeys::Z) ? 1.0f : 0.0f);
-		if (!FMath::IsNearlyZero(CameraRotationInput))
+		if (!FMath::IsNearlyZero(CameraRotationInput) && Width > 0 && Height > 0)
 		{
-			ControlledCameraPawn->RotateCameraYaw(CameraRotationInput * 90.0f * DeltaTime);
+			ControlledCameraPawn->RotateCameraYaw(
+				CameraRotationInput * 90.0f * DeltaTime, static_cast<float>(Width) / static_cast<float>(Height));
 		}
 	}
 
@@ -173,11 +212,12 @@ void AStrategyPlayerController::PlayerTick(float DeltaTime)
 
 	float MouseX = 0.0f;
 	float MouseY = 0.0f;
-	int32 Width = 0;
-	int32 Height = 0;
-	GetViewportSize(Width, Height);
 	if (!GetMousePosition(MouseX, MouseY) || Width <= 0 || Height <= 0)
 	{
+		if (Width > 0 && Height > 0)
+		{
+			ControlledCameraPawn->ClampToMapBounds(static_cast<float>(Width) / static_cast<float>(Height));
+		}
 		return;
 	}
 
@@ -189,6 +229,7 @@ void AStrategyPlayerController::PlayerTick(float DeltaTime)
 		ControlledCameraPawn->AddActorWorldOffset(
 			FStrategyCameraMovement::ScreenToWorld(Direction.GetSafeNormal(), ControlledCameraPawn->GetCameraYaw()) * 1400.0f * DeltaTime, true);
 	}
+	ControlledCameraPawn->ClampToMapBounds(static_cast<float>(Width) / static_cast<float>(Height));
 }
 
 void AStrategyPlayerController::OnPossess(APawn* InPawn)
@@ -214,6 +255,8 @@ void AStrategyPlayerController::OnPossess(APawn* InPawn)
 
 void AStrategyPlayerController::DragSelectUnits(const TArray<AStrategyUnit*>& Units)
 {
+	const TArray<TObjectPtr<AStrategySquad>> PreviousSquads = ControlledSquads;
+	bSuppressSelectionFeedback = true;
 	// do we have units in the list?
 	if (Units.Num() > 0)
 	{
@@ -241,10 +284,16 @@ void AStrategyPlayerController::DragSelectUnits(const TArray<AStrategyUnit*>& Un
 
 	}
 	RefreshControlledUnits();
+	bSuppressSelectionFeedback = false;
+	if (!ControlledSquads.IsEmpty() && PreviousSquads != ControlledSquads)
+	{
+		bSelectionFeedbackPending = true;
+	}
 }
 
 const TArray<AStrategyUnit*>& AStrategyPlayerController::GetSelectedUnits()
 {
+	RefreshControlledUnits();
 	return ControlledUnits;
 }
 
@@ -370,8 +419,11 @@ void AStrategyPlayerController::SelectHoldCompleted(const FInputActionValue& Val
 		FVector CursorLocation;
 		if (GetLocationUnderCursor(CursorLocation))
 		{
-			GetWorld()->GetGameState<AStrategyGameState>()->TryPlaceWallLine(
-				EStrategyFaction::Player, WallDragStart, CursorLocation);
+			if (GetWorld()->GetGameState<AStrategyGameState>()->TryPlaceWallLine(
+				EStrategyFaction::Player, WallDragStart, CursorLocation) == 0)
+			{
+				PlayInvalidActionFeedback();
+			}
 		}
 		bWallDragging = false;
 		bWallPlacementActive = false;
@@ -401,11 +453,18 @@ void AStrategyPlayerController::SelectHoldCompleted(const FInputActionValue& Val
 				DoDeselectAllUnitsCommand();
 				SelectSquad(SquadMarkerSource, false);
 			}
-			FStrategyOrder Order;
-			Order.Type = FStrategySquadMarkerRules::ResolveOrderType(SquadDragTarget != nullptr);
-			Order.TargetActor = SquadDragTarget;
-			Order.Destination = SquadDragTarget ? SquadDragTarget->GetActorLocation() : SquadDragDestination;
-			DoIssueOrder(Order);
+			if (SquadDragGarrisonPoint)
+			{
+				RequestSelectedSquadsGarrison(SquadDragGarrisonPoint);
+			}
+			else
+			{
+				FStrategyOrder Order;
+				Order.Type = FStrategySquadMarkerRules::ResolveOrderType(SquadDragTarget != nullptr);
+				Order.TargetActor = SquadDragTarget;
+				Order.Destination = SquadDragTarget ? SquadDragTarget->GetActorLocation() : SquadDragDestination;
+				DoIssueOrder(Order);
+			}
 		}
 		ClearSquadMarkerInput();
 		return;
@@ -434,10 +493,19 @@ void AStrategyPlayerController::SelectClick(const FInputActionValue& Value)
 	{
 		if (AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>())
 		{
-			if (State->TryPlaceBuilding(EStrategyFaction::Player, static_cast<EStrategyBuildingType>(PendingBuildingIndex), Hit.Location))
+			const EStrategyBuildingType BuildingType = static_cast<EStrategyBuildingType>(PendingBuildingIndex);
+			if (State->TryPlaceBuilding(EStrategyFaction::Player, BuildingType, Hit.Location))
 			{
 				bBuildingPlacementActive = false;
 				bBuildMenuOpen = false;
+			}
+			else
+			{
+				const FString Reason = State->GetFactionState(EStrategyFaction::Player).Gold
+					< State->GetBuildingDefinition(BuildingType)->GoldCost
+					? TEXT("金币不足") : FStrategyPlacementIssueRules::GetIssueText(State->GetBuildingPlacementIssue(
+						EStrategyFaction::Player, BuildingType, Hit.Location));
+				PlayInvalidActionFeedback(Reason);
 			}
 		}
 		return;
@@ -449,6 +517,11 @@ void AStrategyPlayerController::SelectClick(const FInputActionValue& Value)
 		{
 			SelectSquad(Unit->GetSquad(), false);
 		}
+		return;
+	}
+	if (AStrategyControlPoint* Point = Cast<AStrategyControlPoint>(Hit.GetActor()))
+	{
+		SelectControlPoint(Point);
 		return;
 	}
 	if (AStrategyBuilding* Building = Cast<AStrategyBuilding>(Hit.GetActor()))
@@ -500,9 +573,19 @@ void AStrategyPlayerController::InteractClick(const FInputActionValue& Value)
 	FHitResult Hit;
 	if (GetHitUnderCursor(Hit))
 	{
+		if (AStrategyControlPoint* Point = Cast<AStrategyControlPoint>(Hit.GetActor());
+			FStrategyGarrisonCommandRules::ShouldEnterPoint(EStrategyFaction::Player,
+				Point ? Point->GetStrategyFaction() : EStrategyFaction::Neutral, Point != nullptr))
+		{
+			RequestSelectedSquadsGarrison(Point);
+			bAttackMovePending = false;
+			return;
+		}
 		FStrategyOrder Order;
+		AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
 		IStrategyDamageable* Target = Cast<IStrategyDamageable>(Hit.GetActor());
-		if (Target && Target->GetStrategyFaction() == EStrategyFaction::Enemy && Target->IsStrategyAlive())
+		if (Target && FStrategyOrderTargetRules::CanAttack(EStrategyFaction::Player, Target->GetStrategyFaction(),
+			Target->IsStrategyAlive(), State->IsVisibleToFaction(EStrategyFaction::Player, Hit.GetActor()->GetActorLocation())))
 		{
 			Order.Type = EStrategyOrderType::AttackTarget;
 			Order.TargetActor = Hit.GetActor();
@@ -657,6 +740,7 @@ void AStrategyPlayerController::DoDeselectAllUnitsCommand()
 	ControlledSquads.Empty();
 	ControlledUnits.Empty();
 	SelectBuilding(nullptr);
+	SelectControlPoint(nullptr);
 }
 
 void AStrategyPlayerController::DoToggleSelectAllUnitsCommand()
@@ -704,14 +788,138 @@ void AStrategyPlayerController::DoMoveUnitsCommand(const FVector& GoalLocation)
 
 void AStrategyPlayerController::DoIssueOrder(const FStrategyOrder& Order)
 {
+	int32 IssuedCount = 0;
 	for (AStrategySquad* Squad : ControlledSquads)
 	{
-		if (IsValid(Squad))
+		if (!IsValid(Squad))
 		{
-			Squad->IssueOrder(Order);
+			continue;
 		}
+		if (AStrategyControlPoint* Point = Squad->GetGarrisonPoint())
+		{
+			const float Distance = FVector::Dist2D(Point->GetActorLocation(), Order.Destination);
+			if (!FStrategyGarrisonCommandRules::ShouldExitForOrder(Order.Type, Distance))
+			{
+				++IssuedCount;
+				continue;
+			}
+			FVector Direction = (Order.Destination - Point->GetActorLocation()).GetSafeNormal2D();
+			if (Direction.IsNearlyZero())
+			{
+				Direction = FVector::ForwardVector;
+			}
+			Squad->ExitGarrison(Point->GetActorLocation() + Direction * 760.0f);
+		}
+		Squad->IssueOrder(Order);
+		++IssuedCount;
 	}
-	BP_CursorFeedback(Order.Destination, !ControlledSquads.IsEmpty());
+	BP_CursorFeedback(Order.Destination, IssuedCount > 0);
+	if (IssuedCount > 0)
+	{
+		ShowOrderFeedback(Order);
+	}
+	else
+	{
+		PlayInvalidActionFeedback();
+	}
+}
+
+void AStrategyPlayerController::MoveCameraFromMinimap(const FVector2D& WorldLocation)
+{
+	int32 Width = 0;
+	int32 Height = 0;
+	GetViewportSize(Width, Height);
+	ControlledCameraPawn->SetGroundFocus(WorldLocation, static_cast<float>(Width) / Height);
+}
+
+bool AStrategyPlayerController::GetCameraGroundCorners(TArray<FVector2D>& OutCorners) const
+{
+	int32 Width = 0;
+	int32 Height = 0;
+	GetViewportSize(Width, Height);
+	OutCorners.Reset(4);
+	for (const FVector2D& Screen : {
+		FVector2D(0.0f, 0.0f), FVector2D(static_cast<float>(Width), 0.0f),
+		FVector2D(static_cast<float>(Width), static_cast<float>(Height)), FVector2D(0.0f, static_cast<float>(Height))})
+	{
+		FVector Origin;
+		FVector Direction;
+		DeprojectScreenPositionToWorld(Screen.X, Screen.Y, Origin, Direction);
+		const FVector Ground = Origin + Direction * (-Origin.Z / Direction.Z);
+		OutCorners.Add(FVector2D(Ground.X, Ground.Y));
+	}
+	return true;
+}
+
+void AStrategyPlayerController::IssueMinimapCommand(const FVector2D& WorldLocation, AActor* VisibleEnemyTarget)
+{
+	const EStrategyMinimapCommandIntent Intent = FStrategyMinimapCommandRules::ResolveIntent(
+		!ControlledSquads.IsEmpty(), IsValid(VisibleEnemyTarget));
+	if (Intent == EStrategyMinimapCommandIntent::None)
+	{
+		return;
+	}
+
+	FStrategyOrder Order;
+	if (Intent == EStrategyMinimapCommandIntent::Attack)
+	{
+		Order.Type = EStrategyOrderType::AttackTarget;
+		Order.TargetActor = VisibleEnemyTarget;
+		Order.Destination = VisibleEnemyTarget->GetActorLocation();
+	}
+	else
+	{
+		Order.Type = EStrategyOrderType::Move;
+		Order.Destination = FVector(WorldLocation.X, WorldLocation.Y, 0.0f);
+	}
+	DoIssueOrder(Order);
+}
+
+void AStrategyPlayerController::ShowOrderFeedback(const FStrategyOrder& Order)
+{
+	const AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	const UStrategyPresentationDataAsset* Presentation = State->GetPresentationDefinition();
+	UNiagaraSystem* Effect = Presentation->MoveCommandEffect;
+	USoundBase* Sound = Presentation->MoveSound;
+	if (Order.Type == EStrategyOrderType::AttackMove)
+	{
+		Effect = Presentation->AttackMoveCommandEffect;
+		Sound = Presentation->AttackOrderSound;
+	}
+	else if (Order.Type == EStrategyOrderType::AttackTarget)
+	{
+		Effect = Presentation->AttackTargetEffect;
+		Sound = Presentation->AttackOrderSound;
+	}
+	const FVector FeedbackLocation = IsValid(Order.TargetActor) ? Order.TargetActor->GetActorLocation() : Order.Destination;
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, Effect, FeedbackLocation);
+	UGameplayStatics::PlaySound2D(this, Sound);
+}
+
+void AStrategyPlayerController::PlayInvalidActionFeedback(const FString& Message)
+{
+	const AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	UGameplayStatics::PlaySound2D(this, State->GetPresentationDefinition()->InvalidSound);
+	if (HUDRoot)
+	{
+		HUDRoot->PushNotification(Message, FLinearColor(0.93f, 0.34f, 0.28f, 1.0f));
+	}
+}
+
+void AStrategyPlayerController::UpdateMatchResultFeedback()
+{
+	if (bMatchResultFeedbackPlayed)
+	{
+		return;
+	}
+	const AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	if (State && State->GetWinner() != EStrategyFaction::Neutral)
+	{
+		const UStrategyPresentationDataAsset* Presentation = State->GetPresentationDefinition();
+		UGameplayStatics::PlaySound2D(this,
+			State->GetWinner() == EStrategyFaction::Player ? Presentation->VictorySound : Presentation->DefeatSound);
+		bMatchResultFeedbackPlayed = true;
+	}
 }
 
 void AStrategyPlayerController::DoCameraModifyZoomCommand(float ZoomDelta)
@@ -755,6 +963,8 @@ void AStrategyPlayerController::DoCameraSetZoomPercentageCommand(float Percentag
 
 AStrategyUnit* AStrategyPlayerController::GetClosestSelectedUnitToLocation(FVector TargetLocation)
 {
+	RefreshControlledUnits();
+
 	// closest unit and distance
 	AStrategyUnit* OutUnit = nullptr;
 	float Closest = 0.0f;
@@ -914,9 +1124,17 @@ void AStrategyPlayerController::UpdateSquadMarkerDragTarget()
 	FHitResult Hit;
 	GetHitUnderCursor(Hit);
 	AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+	SquadDragGarrisonPoint = Cast<AStrategyControlPoint>(Hit.GetActor());
+	if (SquadDragGarrisonPoint && SquadDragGarrisonPoint->GetStrategyFaction() == EStrategyFaction::Player)
+	{
+		SquadDragTarget = nullptr;
+		SquadDragDestination = SquadDragGarrisonPoint->GetActorLocation();
+		return;
+	}
+	SquadDragGarrisonPoint = nullptr;
 	IStrategyDamageable* Target = Cast<IStrategyDamageable>(Hit.GetActor());
-	if (Target && Target->IsStrategyAlive() && Target->GetStrategyFaction() != EStrategyFaction::Player
-		&& State->IsVisibleToFaction(EStrategyFaction::Player, Hit.GetActor()->GetActorLocation()))
+	if (Target && FStrategyOrderTargetRules::CanAttack(EStrategyFaction::Player, Target->GetStrategyFaction(),
+		Target->IsStrategyAlive(), State->IsVisibleToFaction(EStrategyFaction::Player, Hit.GetActor()->GetActorLocation())))
 	{
 		SquadDragTarget = Hit.GetActor();
 	}
@@ -931,9 +1149,43 @@ void AStrategyPlayerController::ClearSquadMarkerInput()
 {
 	SquadMarkerSource = nullptr;
 	SquadDragTarget = nullptr;
+	SquadDragGarrisonPoint = nullptr;
 	SquadDragDestination = FVector::ZeroVector;
 	bSquadMarkerInputActive = false;
 	bSquadMarkerDragging = false;
+}
+
+void AStrategyPlayerController::RequestSelectedSquadsGarrison(AStrategyControlPoint* Point)
+{
+	int32 AvailableSlots = Point ? Point->GetGarrisonCapacity() - Point->GetGarrisonedSquads().Num() : 0;
+	int32 RequestedCount = 0;
+	for (AStrategySquad* Squad : ControlledSquads)
+	{
+		if (!IsValid(Squad) || Squad->GetFaction() != EStrategyFaction::Player)
+		{
+			continue;
+		}
+		if (Squad->GetGarrisonPoint() == Point)
+		{
+			++RequestedCount;
+			continue;
+		}
+		if (AvailableSlots <= 0)
+		{
+			continue;
+		}
+		Squad->RequestGarrison(Point);
+		--AvailableSlots;
+		++RequestedCount;
+	}
+	if (RequestedCount > 0)
+	{
+		BP_CursorFeedback(Point->GetActorLocation(), true);
+	}
+	else
+	{
+		PlayInvalidActionFeedback(TEXT("驻防容量已满"));
+	}
 }
 
 void AStrategyPlayerController::SelectSquad(AStrategySquad* Squad, bool bToggle)
@@ -942,6 +1194,7 @@ void AStrategyPlayerController::SelectSquad(AStrategySquad* Squad, bool bToggle)
 	{
 		return;
 	}
+	SelectControlPoint(nullptr);
 	if (bToggle && ControlledSquads.Contains(Squad))
 	{
 		ControlledSquads.Remove(Squad);
@@ -951,12 +1204,17 @@ void AStrategyPlayerController::SelectSquad(AStrategySquad* Squad, bool bToggle)
 	{
 		ControlledSquads.Add(Squad);
 		Squad->SetSelected(true);
+		bSelectionFeedbackPending |= !bSuppressSelectionFeedback;
 	}
 	RefreshControlledUnits();
 }
 
 void AStrategyPlayerController::SelectBuilding(AStrategyBuilding* Building)
 {
+	if (Building)
+	{
+		SelectControlPoint(nullptr);
+	}
 	if (SelectedBuilding)
 	{
 		SelectedBuilding->SetSelected(false);
@@ -965,7 +1223,39 @@ void AStrategyPlayerController::SelectBuilding(AStrategyBuilding* Building)
 	if (SelectedBuilding)
 	{
 		SelectedBuilding->SetSelected(true);
+		bSelectionFeedbackPending |= !bSuppressSelectionFeedback;
 	}
+}
+
+void AStrategyPlayerController::SelectControlPoint(AStrategyControlPoint* Point)
+{
+	if (Point)
+	{
+		DoDeselectAllUnitsCommand();
+	}
+	SelectedControlPoint = Point;
+}
+
+bool AStrategyPlayerController::TrySpecializeSelectedTown(EStrategyTownSpecialization Specialization)
+{
+	const bool bSucceeded = GetWorld()->GetGameState<AStrategyGameState>()->TryStartTownSpecialization(
+		EStrategyFaction::Player, SelectedControlPoint, Specialization);
+	if (!bSucceeded)
+	{
+		PlayInvalidActionFeedback(TEXT("城镇当前不可专精或金币不足"));
+	}
+	return bSucceeded;
+}
+
+bool AStrategyPlayerController::TryDowngradeSelectedTown()
+{
+	const bool bSucceeded = GetWorld()->GetGameState<AStrategyGameState>()->TryStartTownDowngrade(
+		EStrategyFaction::Player, SelectedControlPoint);
+	if (!bSucceeded)
+	{
+		PlayInvalidActionFeedback(TEXT("城镇当前不可降级"));
+	}
+	return bSucceeded;
 }
 
 void AStrategyPlayerController::RefreshControlledUnits()
@@ -989,6 +1279,78 @@ void AStrategyPlayerController::RefreshControlledUnits()
 void AStrategyPlayerController::HandleAttackMoveKey()
 {
 	bAttackMovePending = true;
+}
+
+void AStrategyPlayerController::BeginMoveCommandFromUI()
+{
+	bAttackMovePending = false;
+	if (HUDRoot)
+	{
+		HUDRoot->PushNotification(TEXT("右键选择移动目标"), FLinearColor(0.95f, 0.78f, 0.28f, 1.0f));
+	}
+	RestoreGameFocus();
+}
+
+void AStrategyPlayerController::BeginAttackMoveCommandFromUI()
+{
+	HandleAttackMoveKey();
+	RestoreGameFocus();
+}
+
+void AStrategyPlayerController::StopSelectedSquadsFromUI()
+{
+	HandleStopKey();
+	RestoreGameFocus();
+}
+
+void AStrategyPlayerController::ToggleBuildMenuFromUI()
+{
+	HandleBuildMenuKey();
+	RestoreGameFocus();
+}
+
+void AStrategyPlayerController::SelectBuildItemFromUI(int32 Index)
+{
+	if (Index == 7 && !bBuildMenuOpen)
+	{
+		bBuildMenuOpen = true;
+	}
+	HandleNumberKey(Index);
+	RestoreGameFocus();
+}
+
+bool AStrategyPlayerController::TrainSelectedBuildingFromUI(EStrategyUnitType UnitType)
+{
+	const bool bSucceeded = IsValid(SelectedBuilding) && SelectedBuilding->QueueUnit(UnitType);
+	if (!bSucceeded)
+	{
+		FString Reason = TEXT("当前建筑不能训练此单位");
+		if (IsValid(SelectedBuilding))
+		{
+			AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>();
+			const FStrategyFactionState& Faction = State->GetFactionState(EStrategyFaction::Player);
+			const UStrategyUnitDataAsset* Unit = State->GetUnitDefinition(UnitType);
+			const UStrategyBuildingDataAsset* Building = State->GetBuildingDefinition(SelectedBuilding->GetBuildingType());
+			Reason = FStrategyHUDActionRules::GetUnavailableReasonText(FStrategyHUDActionRules::GetTrainingUnavailableReason(
+				SelectedBuilding->IsConstructionComplete(), Building->TrainableUnits.Contains(UnitType), SelectedBuilding->GetQueueLength(),
+				Faction.Gold, Faction.UsedPopulation + Faction.ReservedPopulation, Faction.PopulationCap,
+				Unit->GoldCost, Unit->PopulationCost));
+		}
+		PlayInvalidActionFeedback(Reason);
+	}
+	RestoreGameFocus();
+	return bSucceeded;
+}
+
+void AStrategyPlayerController::RestoreGameFocus()
+{
+	FSlateApplication::Get().SetAllUserFocusToGameViewport();
+	bShowMouseCursor = true;
+}
+
+bool AStrategyPlayerController::GetCursorWorldLocationForUI(FVector& Location)
+{
+	return GetLocationUnderCursor(Location);
 }
 
 void AStrategyPlayerController::HandleStopKey()
@@ -1034,11 +1396,15 @@ void AStrategyPlayerController::HandleNumberKey(int32 Index)
 			SelectBuilding(Gate);
 			bBuildMenuOpen = false;
 		}
+		else
+		{
+			PlayInvalidActionFeedback(TEXT("需要选中已完成城墙且金币充足"));
+		}
 		return;
 	}
 	if (SelectedBuilding && Index >= 1 && Index <= 3)
 	{
-		SelectedBuilding->QueueUnit(static_cast<EStrategyUnitType>(Index - 1));
+		TrainSelectedBuildingFromUI(static_cast<EStrategyUnitType>(Index - 1));
 	}
 }
 
@@ -1099,14 +1465,62 @@ void AStrategyPlayerController::ClearWallPreview()
 
 void AStrategyPlayerController::HandlePauseKey()
 {
-	SetPause(!IsPaused());
+	OpenPauseMenu();
+}
+
+void AStrategyPlayerController::OpenPauseMenu()
+{
+	bBuildMenuOpen = false;
+	bBuildingPlacementActive = false;
+	bWallPlacementActive = false;
+	bWallDragging = false;
+	bAttackMovePending = false;
+	ClearWallPreview();
+	ClearSquadMarkerInput();
+	if (StrategyHUD)
+	{
+		StrategyHUD->DragSelectUpdate(FVector2D::ZeroVector, FVector2D::ZeroVector, FVector2D::ZeroVector, false);
+	}
+
+	SetPause(true);
+	PauseMenu->OpenPausePage();
+	PauseMenu->SetVisibility(ESlateVisibility::Visible);
+	FInputModeUIOnly InputMode;
+	InputMode.SetWidgetToFocus(PauseMenu->TakeWidget());
+	SetInputMode(InputMode);
+	bShowMouseCursor = true;
+	PauseMenu->SetKeyboardFocus();
+}
+
+void AStrategyPlayerController::ClosePauseMenu()
+{
+	// “继续游戏”由按钮的鼠标抬起事件触发，先释放 Slate 捕获，避免菜单隐藏后仍占用左右键。
+	FSlateApplication::Get().ReleaseAllPointerCapture();
+	PauseMenu->SetVisibility(ESlateVisibility::Collapsed);
+	SetPause(false);
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputMode.SetHideCursorDuringCapture(false);
+	SetInputMode(InputMode);
+	FSlateApplication::Get().SetAllUserFocusToGameViewport();
+	bShowMouseCursor = true;
+}
+
+void AStrategyPlayerController::QuitFromPauseMenu()
+{
+	UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit, false);
+}
+
+bool AStrategyPlayerController::IsPauseMenuOpen() const
+{
+	return PauseMenu && PauseMenu->GetVisibility() == ESlateVisibility::Visible;
 }
 
 void AStrategyPlayerController::HandleRestartKey()
 {
 	if (const AStrategyGameState* State = GetWorld()->GetGameState<AStrategyGameState>(); State && !State->IsMatchRunning())
 	{
-		UGameplayStatics::OpenLevel(this, TEXT("LVL_CityStateSkirmish"));
+		UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this, true)));
 	}
 }
 

@@ -1,0 +1,134 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "DESKTOP-101AJPT",
+			"instance": "FD6042E8406A94676389F487B730E51C",
+			"instanceName": "DESKTOP-101AJPT-13492",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (23H2) [10.0.22631.7376] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+			"cPUModel": "12th Gen Intel(R) Core(TM) i7-12700H",
+			"rAMInGB": 16,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.09.05-17.01.27",
+	"succeeded": 7,
+	"succeededWithWarnings": 0,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 0.11492980271577835,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "BuildingFootprint",
+			"fullTestPath": "RTS.Strategy.Rules.BuildingFootprint",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"FD6042E8406A94676389F487B730E51C"
+			],
+			"duration": 0.016314700245857239,
+			"dateTime": "2026.09.05-17.01.26",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Capture",
+			"fullTestPath": "RTS.Strategy.Rules.Capture",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"FD6042E8406A94676389F487B730E51C"
+			],
+			"duration": 0.016353502869606018,
+			"dateTime": "2026.09.05-17.01.26",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "CounterDamage",
+			"fullTestPath": "RTS.Strategy.Rules.CounterDamage",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"FD6042E8406A94676389F487B730E51C"
+			],
+			"duration": 0.016329899430274963,
+			"dateTime": "2026.09.05-17.01.27",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "EarlyFactionInitialization",
+			"fullTestPath": "RTS.Strategy.Rules.EarlyFactionInitialization",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"FD6042E8406A94676389F487B730E51C"
+			],
+			"duration": 0.016309700906276703,
+			"dateTime": "2026.09.05-17.01.27",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Economy",
+			"fullTestPath": "RTS.Strategy.Rules.Economy",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"FD6042E8406A94676389F487B730E51C"
+			],
+			"duration": 0.016883399337530136,
+			"dateTime": "2026.09.05-17.01.27",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "PopulationLimit",
+			"fullTestPath": "RTS.Strategy.Rules.PopulationLimit",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"FD6042E8406A94676389F487B730E51C"
+			],
+			"duration": 0.016073700040578842,
+			"dateTime": "2026.09.05-17.01.27",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Victory",
+			"fullTestPath": "RTS.Strategy.Rules.Victory",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"FD6042E8406A94676389F487B730E51C"
+			],
+			"duration": 0.016664899885654449,
+			"dateTime": "2026.09.05-17.01.27",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}

@@ -1,0 +1,22 @@
+{
+  "stage": "M7-01",
+  "date": "2026-09-10",
+  "executable": "D:/ue project/RTS/Builds/Windows_M7_Minimap/RTS/Binaries/Win64/RTS.exe",
+  "map": "/Game/CityStateRTS/Maps/LVL_CityStateSkirmish",
+  "durationSeconds": 20,
+  "aliveBeforeStop": true,
+  "respondingBeforeStop": true,
+  "mapLoadCompleteMatches": 1,
+  "fatalOrAssertOrUnhandledMatches": 0,
+  "slateOrUMGErrorMatches": 0,
+  "projectResourceLoadFailures": 0,
+  "packageBuildResult": "BUILD SUCCESSFUL",
+  "packagedMaps": [
+    "/Game/CityStateRTS/Maps/LVL_CityStateSkirmish",
+    "/Game/CityStateRTS/Maps/LVL_RiverValleySkirmish"
+  ],
+  "packageFiles": 49,
+  "hashMismatches": 0,
+  "smokeLog": "Saved/Verification/M7/PackagedSmoke2.log",
+  "packageManifest": "docs/verification/M7-minimap-package.csv"
+}

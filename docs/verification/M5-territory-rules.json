@@ -1,0 +1,23 @@
+{
+  "reportCreatedOn": "2026.09.07-12.58.37",
+  "build": {
+    "target": "RTSEditor Win64 Development",
+    "result": "Succeeded",
+    "projectWarnings": 0,
+    "notes": "仅有引擎弃用提示与非首选 VS 14.51 工具链提示"
+  },
+  "automation": {
+    "filter": "RTS.Strategy.Territory",
+    "succeeded": 4,
+    "succeededWithWarnings": 0,
+    "failed": 0,
+    "notRun": 0,
+    "tests": [
+      "RTS.Strategy.Territory.DevelopmentRules",
+      "RTS.Strategy.Territory.FactionEconomyTotals",
+      "RTS.Strategy.Territory.SpecializationEffects",
+      "RTS.Strategy.Territory.SupplyNetwork"
+    ],
+    "sourceReport": "Saved/Verification/M5/TerritoryRules/index.json"
+  }
+}

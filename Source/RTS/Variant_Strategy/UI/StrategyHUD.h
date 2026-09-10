@@ -8,6 +8,7 @@
 
 class UStrategyUI;
 enum class EStrategyUnitType : uint8;
+enum class EStrategyTownSpecialization : uint8;
 
 /**
  *  Simple strategy game HUD
@@ -61,4 +62,6 @@ protected:
 		float HealthPercent, bool bHighlighted);
 	void DrawDragArrow(const FVector2D& Start, const FVector2D& End, const FLinearColor& Color);
 	void DrawCircle(const FVector2D& Center, float Radius, const FLinearColor& Color, float Thickness);
+	void DrawTownSymbol(const FVector2D& Center, EStrategyTownSpecialization Specialization,
+		const FLinearColor& Color);
 };

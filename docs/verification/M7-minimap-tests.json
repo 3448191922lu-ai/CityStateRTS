@@ -1,0 +1,20 @@
+{
+  "stage": "M7-01",
+  "date": "2026-09-10",
+  "build": "RTSEditor Win64 Development",
+  "buildResult": "Succeeded",
+  "automationFilter": "RTS.Strategy",
+  "report": "Saved/Verification/M7/AutomationFinal/index.json",
+  "log": "Saved/Verification/M7/AutomationFinal.log",
+  "total": 51,
+  "succeeded": 51,
+  "failed": 0,
+  "criticalErrors": 0,
+  "minimapRules": {
+    "automationFilter": "RTS.Strategy.UI.Minimap",
+    "report": "Saved/Verification/M7/MinimapRules/index.json",
+    "total": 2,
+    "succeeded": 2,
+    "failed": 0
+  }
+}

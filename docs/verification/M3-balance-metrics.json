@@ -1,0 +1,53 @@
+[
+  {
+    "Unit": "Infantry",
+    "Gold": 100.0,
+    "Population": 4,
+    "Members": 4,
+    "SquadHealth": 600.0,
+    "SquadDps": 48.0,
+    "CounterDps": 72.0,
+    "Speed": 420.0,
+    "Range": 180.0,
+    "TrainSeconds": 8.0,
+    "FirstReinforcementSeconds": 20.0,
+    "GoldPerSecondToKeepQueueBusy": 12.5,
+    "GoldRecoveryCapitalSeconds": 20.0,
+    "GoldRecoveryOneTownSeconds": 12.5,
+    "Travel100mStraightSeconds": 23.81
+  },
+  {
+    "Unit": "Archer",
+    "Gold": 140.0,
+    "Population": 4,
+    "Members": 4,
+    "SquadHealth": 360.0,
+    "SquadDps": 40.0,
+    "CounterDps": 60.0,
+    "Speed": 430.0,
+    "Range": 1200.0,
+    "TrainSeconds": 10.0,
+    "FirstReinforcementSeconds": 25.0,
+    "GoldPerSecondToKeepQueueBusy": 14.0,
+    "GoldRecoveryCapitalSeconds": 28.0,
+    "GoldRecoveryOneTownSeconds": 17.5,
+    "Travel100mStraightSeconds": 23.26
+  },
+  {
+    "Unit": "Cavalry",
+    "Gold": 200.0,
+    "Population": 6,
+    "Members": 3,
+    "SquadHealth": 600.0,
+    "SquadDps": 60.0,
+    "CounterDps": 90.0,
+    "Speed": 650.0,
+    "Range": 220.0,
+    "TrainSeconds": 14.0,
+    "FirstReinforcementSeconds": 34.0,
+    "GoldPerSecondToKeepQueueBusy": 14.286,
+    "GoldRecoveryCapitalSeconds": 40.0,
+    "GoldRecoveryOneTownSeconds": 25.0,
+    "Travel100mStraightSeconds": 15.38
+  }
+]

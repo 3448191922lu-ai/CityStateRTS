@@ -1,0 +1,19 @@
+{
+  "reportCreatedOn": "2026.09.08-02.28.04",
+  "build": {
+    "target": "RTSEditor Win64 Development",
+    "result": "Succeeded"
+  },
+  "automation": {
+    "filter": "RTS.Strategy.Territory",
+    "succeeded": 9,
+    "succeededWithWarnings": 0,
+    "failed": 0,
+    "notRun": 0,
+    "sourceReport": "Saved/Verification/M5/TerritoryUIFix/index.json"
+  },
+  "redGreen": {
+    "red": "FStrategyTownAIInputs and FStrategyTownAIPlanner were undefined",
+    "green": "TownAIChoice and TownPanelDesiredSize passed with the complete territory group"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "stage": "M6-01",
+  "date": "2026-09-09",
+  "build": "RTSEditor Win64 Development",
+  "buildResult": "Succeeded",
+  "automationFilter": "RTS.Strategy",
+  "report": "Saved/Verification/M6/FinalTests/index.json",
+  "total": 47,
+  "succeeded": 47,
+  "failed": 0,
+  "warnings": 0,
+  "errors": 0,
+  "postFinalCameraChange": {
+    "automationFilter": "RTS.Strategy.Systems.Camera",
+    "report": "Saved/Verification/M6/CameraBounds/index.json",
+    "total": 3,
+    "succeeded": 3,
+    "failed": 0,
+    "warnings": 0,
+    "errors": 0,
+    "ultrawideReferenceResolution": "2559x1089"
+  },
+  "postFogBoundsChange": {
+    "automationFilter": "RTS.Strategy.Systems",
+    "report": "Saved/Verification/M6/FogBounds/index.json",
+    "total": 21,
+    "succeeded": 21,
+    "failed": 0,
+    "warnings": 0,
+    "errors": 0
+  }
+}

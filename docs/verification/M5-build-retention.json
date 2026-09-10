@@ -1,0 +1,21 @@
+{
+  "buildRoot": "D:/ue project/RTS/Builds",
+  "policy": "Keep the five newest Windows_* candidate directories",
+  "kept": [
+    "D:/ue project/RTS/Builds/Windows_M6_Final",
+    "D:/ue project/RTS/Builds/Windows_M5_Garrison",
+    "D:/ue project/RTS/Builds/Windows_M5_UI",
+    "D:/ue project/RTS/Builds/Windows_M5_Territory",
+    "D:/ue project/RTS/Builds/Windows_M4_Settings"
+  ],
+  "removedToRecycleBin": [
+    "D:/ue project/RTS/Builds/Windows_M4_VisualAudio",
+    "D:/ue project/RTS/Builds/Windows_M3_NavFix4",
+    "D:/ue project/RTS/Builds/Windows_M3_NavFix3"
+  ],
+  "allTargetsVerifiedAsDirectChildren": true,
+  "newCandidateProtected": true,
+  "retentionCompliant": true,
+  "recoverable": true,
+  "note": "Permanent recursive removal was blocked; verified direct-child candidates were moved to the Windows Recycle Bin instead."
+}

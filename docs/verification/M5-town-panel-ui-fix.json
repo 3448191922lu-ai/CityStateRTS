@@ -1,0 +1,22 @@
+{
+  "issue": "城镇信息面板被画布默认尺寸压缩，标题溢出且正文竖向换行",
+  "rootCause": "UCanvasPanelSlot 未启用 AutoSize，未采用内部 760x176 SizeBox 的期望尺寸",
+  "fix": "城镇面板画布插槽启用期望尺寸布局",
+  "regressionTest": "RTS.Strategy.Territory.TownPanelDesiredSize",
+  "territoryTests": {
+    "succeeded": 9,
+    "failed": 0,
+    "sourceReport": "Saved/Verification/M5/TerritoryUIFix/index.json"
+  },
+  "package": "D:/ue project/RTS/Builds/Windows_M5_Territory/RTS.exe",
+  "smoke": {
+    "runtimeSeconds": 10.5,
+    "aliveBeforeStop": true,
+    "fatal": 0,
+    "projectAssetFailures": 0,
+    "networkFailures": 0,
+    "errorLines": 0,
+    "log": "C:/Users/LENOVO/AppData/Local/Temp/RTS_M5_UIFix.log"
+  },
+  "manualVisualVerification": "待用户在打包版中选择城镇复查"
+}

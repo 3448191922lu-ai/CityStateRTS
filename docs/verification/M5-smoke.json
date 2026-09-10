@@ -1,0 +1,21 @@
+{
+  "candidate": "D:/ue project/RTS/Builds/Windows_M5_Territory",
+  "executable": "RTS/Binaries/Win64/RTS.exe",
+  "map": "/Game/CityStateRTS/Maps/LVL_RiverValleySkirmish",
+  "runtimeSeconds": 10.5,
+  "aliveBeforeStop": true,
+  "rawCounts": {
+    "Fatal error": 0,
+    "Unhandled Exception": 0,
+    "Assertion failed": 0,
+    "LowLevelFatalError": 0,
+    "Couldn't find file": 0,
+    "Failed to load": 0
+  },
+  "classifiedLoadMessages": {
+    "optionalProfilerDlls": 0,
+    "defaultSoundConcurrencyObject": 0,
+    "projectAssetFailures": 0
+  },
+  "log": "C:/Users/LENOVO/AppData/Local/Temp/RTS_M5_UIFix.log"
+}

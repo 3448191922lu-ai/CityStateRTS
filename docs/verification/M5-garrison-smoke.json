@@ -1,0 +1,16 @@
+{
+  "stage": "M5-05",
+  "executable": "D:/ue project/RTS/Builds/Windows_M5_Garrison/RTS/Binaries/Win64/RTS.exe",
+  "log": "D:/ue project/RTS/Builds/Windows_M5_Garrison/RTS/Saved/Logs/RTS.log",
+  "durationSeconds": 20,
+  "processAliveAtEnd": true,
+  "mapLoaded": "/Game/CityStateRTS/Maps/LVL_RiverValleySkirmish",
+  "aiDecisionObserved": true,
+  "fatalErrors": 0,
+  "unhandledExceptions": 0,
+  "assertions": 0,
+  "lowLevelFatalErrors": 0,
+  "projectAssetLoadFailures": 0,
+  "networkFailures": 0,
+  "diagnosticNote": "首次带空格绝对日志参数的启动被命令行拆分并产生假网络错误，已保留为 Saved/Verification/M5/GarrisonSmokeBadArgs.log，不作为产品结果。"
+}
